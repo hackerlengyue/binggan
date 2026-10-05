@@ -1,0 +1,187 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  baseline:
+    name: Tests and repository checks
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.5.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: npm ci
+      - run: npm run setup
+      - name: Check release version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+          if (process.env.GITHUB_REF_NAME !== `v${version}`) {
+            throw new Error(`Tag must match application version v${version}`);
+          }
+          NODE
+      - name: Prepare pinned media tools
+        run: |
+          case "$(uname -m)" in
+            arm64) resource_target=darwin-arm64 ;;
+            x86_64) resource_target=darwin-amd64 ;;
+            *) exit 1 ;;
+          esac
+          npm run prepare:resources -- --platform "$resource_target"
+      - run: npm run check
+      - name: Check generated bindings
+        run: git diff --exit-code -- frontend/src/mygo.ts
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    needs: baseline
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-26
+          - arch: amd64
+            runner: macos-26-intel
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.5.app/Contents/Developer
+      TARGET_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: npm ci
+      - run: npm run setup
+      - name: Prepare platform tools
+        run: npm run prepare:resources -- --platform "darwin-$TARGET_ARCH"
+      - name: Build and verify application
+        run: bash scripts/build-macos.sh "$TARGET_ARCH"
+      - name: Package application
+        run: |
+          mkdir -p build/artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build/darwin-$TARGET_ARCH/饼干大小姐.app" \
+            "build/artifacts/binggan-macos-$TARGET_ARCH.zip"
+          cd build/artifacts
+          shasum -a 256 "binggan-macos-$TARGET_ARCH.zip" > "binggan-macos-$TARGET_ARCH.zip.sha256"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binggan-macos-${{ matrix.arch }}
+          path: build/artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  windows:
+    name: Windows ${{ matrix.arch }} (runtime untested)
+    needs: baseline
+    runs-on: windows-2025
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      TARGET_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: npm ci
+      - run: npm run setup
+      - name: Prepare platform tools
+        run: npm run prepare:resources -- --platform "windows-$env:TARGET_ARCH"
+      - name: Build application
+        run: npm run build -- -platform "windows/$env:TARGET_ARCH"
+      - name: Package application
+        run: |
+          New-Item -ItemType Directory -Force build/artifacts | Out-Null
+          $archive = "build/artifacts/binggan-windows-$env:TARGET_ARCH.zip"
+          Compress-Archive -Path "build/windows-$env:TARGET_ARCH/*" -DestinationPath $archive
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path -Leaf $archive)" | Set-Content -Encoding ascii -LiteralPath "$archive.sha256"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binggan-windows-${{ matrix.arch }}
+          path: build/artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  release:
+    name: Publish tagged release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [macos, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: binggan-*
+          path: artifacts
+          merge-multiple: true
+      - name: Publish archives and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" artifacts/* --clobber
+          else
+            gh release create "$RELEASE_TAG" artifacts/* \
+              --verify-tag --title "Binggan $RELEASE_TAG" --generate-notes
+          fi
