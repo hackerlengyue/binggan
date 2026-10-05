@@ -1,0 +1,54 @@
+[
+  {
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-01-13-06/ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0.zip",
+    "sha256": "7263744331532e1606bfbac25b5c1a7dcd23091b44614787efd742d6a8dfa1a6",
+    "format": "zip-file",
+    "member": "ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0/bin/ffmpeg.exe",
+    "destination": "tools/ffmpeg.exe",
+    "output_sha256": "96fe91a9d4a8fd3880bacd1412abc3cb5b7e703928f3011835a08a60b7209779"
+  },
+  {
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-01-13-06/ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0.zip",
+    "sha256": "7263744331532e1606bfbac25b5c1a7dcd23091b44614787efd742d6a8dfa1a6",
+    "format": "zip-file",
+    "member": "ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0/bin/ffprobe.exe",
+    "destination": "tools/ffprobe.exe",
+    "output_sha256": "2a59705e68b6db59fe84bf5c1e6f2809af63540e9cd85aba72ed959c21a8eb25"
+  },
+  {
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-01-13-06/ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0.zip",
+    "sha256": "7263744331532e1606bfbac25b5c1a7dcd23091b44614787efd742d6a8dfa1a6",
+    "format": "zip-file",
+    "member": "ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0/LICENSE.txt",
+    "destination": "licenses/ffmpeg/DISTRIBUTION-LICENSE.txt",
+    "output_sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/COPYING.GPLv2",
+    "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/COPYING.GPLv2",
+    "output_sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/COPYING.GPLv3",
+    "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/COPYING.GPLv3",
+    "output_sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/LICENSE.md",
+    "sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/LICENSE.md",
+    "output_sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/README.md",
+    "sha256": "7e30f809d40454ebc467cf473a063d7306f5eb836dca6b80668c4427d8845914",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/README.md",
+    "output_sha256": "7e30f809d40454ebc467cf473a063d7306f5eb836dca6b80668c4427d8845914"
+  }
+]

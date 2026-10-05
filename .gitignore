@@ -1,0 +1,65 @@
+# Dependencies and generated output
+node_modules/
+dist/
+/build/
+/.mygo/
+/.cache/
+/.local/
+**/.build/
+**/.swiftpm/
+*.tsbuildinfo
+mygo_windows_*.syso
+coverage/
+
+# Downloaded or compiled platform tools
+/resources/*/tools/
+/resources/darwin/PermissionFlow_PermissionFlow.bundle/
+# Downloaded Markdown license copies; maintained documents live in docs/
+/resources/*/licenses/ffmpeg/*.md
+
+# Local application data and imported media
+/data/
+/input/
+/output/
+/downloads/
+/keys/
+/capture/
+/logs/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+*.log.*
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.mobileprovision
+
+# Editor and operating-system files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*.tmp
+
+# Installers belong in releases, not the source tree
+*.app/
+*.dmg
+*.pkg
+*.exe
+*.msi
+*.zip
+*.tar.gz

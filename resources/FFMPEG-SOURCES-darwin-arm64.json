@@ -1,0 +1,44 @@
+[
+  {
+    "url": "https://www.osxexperts.net/ffmpeg9arm.zip",
+    "sha256": "d0c06c5c68ce48af3143b262f7a9118a7c9f67de1e237fcc24ffb14df9c67af9",
+    "format": "zip-file",
+    "destination": "tools/ffmpeg",
+    "output_sha256": "591260c945d0eef150e3bf82b0ef988bd36a9cecc18ff05d6679617159f0a95e"
+  },
+  {
+    "url": "https://www.osxexperts.net/ffprobe9arm.zip",
+    "sha256": "0c94fbdd8917022f28115eca512196cf4648732bc9e5db9ec8896c7e519d02aa",
+    "format": "zip-file",
+    "destination": "tools/ffprobe",
+    "output_sha256": "e11c17e8200b3ee4c4c186d245e2b4053f01d56957336c1817fca0b997469106"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/COPYING.GPLv2",
+    "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/COPYING.GPLv2",
+    "output_sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/COPYING.GPLv3",
+    "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/COPYING.GPLv3",
+    "output_sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/LICENSE.md",
+    "sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/LICENSE.md",
+    "output_sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0/README.md",
+    "sha256": "7e30f809d40454ebc467cf473a063d7306f5eb836dca6b80668c4427d8845914",
+    "format": "raw",
+    "destination": "licenses/ffmpeg/README.md",
+    "output_sha256": "7e30f809d40454ebc467cf473a063d7306f5eb836dca6b80668c4427d8845914"
+  }
+]

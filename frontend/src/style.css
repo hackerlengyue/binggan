@@ -1,0 +1,440 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./third-party/shadcn-vue.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.55;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.488 0.243 264.376);
+  --primary-foreground: oklch(0.97 0.014 254.604);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.88 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --radius: 0.5rem;
+  --canvas: oklch(0.975 0.003 260);
+  --success: oklch(0.52 0.13 160);
+  --warning: oklch(0.58 0.14 65);
+  --info: oklch(0.5 0.2 262);
+  --selection: oklch(0.93 0.03 262);
+  --sidebar: oklch(0.965 0.002 260);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.546 0.245 262.881);
+  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+  --sidebar-accent: var(--primary);
+  --sidebar-accent-foreground: var(--primary-foreground);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --scrollbar-thumb: oklch(0.35 0 0 / 8%);
+  --scrollbar-thumb-hover: oklch(0.3 0 0 / 28%);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.58 0.19 262);
+  --primary-foreground: oklch(0.985 0.008 254);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.623 0.214 259.815);
+  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --canvas: oklch(0.13 0 0);
+  --success: oklch(0.78 0.14 160);
+  --warning: oklch(0.82 0.14 80);
+  --info: oklch(0.75 0.13 255);
+  --selection: oklch(0.31 0.04 262);
+  --scrollbar-thumb: oklch(0.75 0 0 / 8%);
+  --scrollbar-thumb-hover: oklch(0.82 0 0 / 28%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #app {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    @apply bg-background;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    @apply font-sans;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  /* Native apps do not let chrome (navigation, buttons, labels, headers) be
+     dragged or selected; data cells, logs, inputs and messages stay selectable. */
+  header,
+  [data-slot="sidebar"],
+  [data-slot="button"],
+  [data-slot="toggle"],
+  [data-slot="toggle-group-item"],
+  [data-slot="tabs-trigger"],
+  [data-slot="badge"],
+  [data-slot="table-head"],
+  [data-slot="select-trigger"],
+  [data-slot="field-label"],
+  [data-slot="pagination"],
+  label {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  img,
+  a {
+    -webkit-user-drag: none;
+  }
+}
+
+/* Full-height list panels keep paging outside the scrolling data region. */
+@layer components {
+  .data-list-panel {
+    @apply flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-background;
+  }
+  .data-list-scroll {
+    @apply flex min-h-0 flex-1 flex-col overflow-auto overscroll-none;
+  }
+  .data-list-scroll > [data-slot="empty"] {
+    flex: 1;
+  }
+}
+
+/* Scoped utility overrides keep the shared standard components intact. */
+@layer utilities {
+  .desktop-workspace * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+  .desktop-workspace *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .desktop-workspace *::-webkit-scrollbar-track,
+  .desktop-workspace *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  .desktop-workspace *::-webkit-scrollbar-thumb {
+    min-height: 36px;
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+    background-clip: padding-box;
+  }
+  .desktop-workspace *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+    background-clip: padding-box;
+  }
+  .window-toolbar {
+    background: var(--sidebar);
+  }
+  /* Content sits on a faint canvas so white panels read as surfaces, as in native split views. */
+  .workspace-content {
+    background: var(--canvas);
+  }
+  .data-list-panel {
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    box-shadow: 0 1px 2px oklch(0 0 0 / 4%);
+  }
+  .desktop-workspace [data-slot="sidebar-gap"] {
+    transition: width 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .desktop-workspace [data-slot="sidebar-container"] {
+    left: 0;
+    transform: translateX(0);
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .desktop-workspace
+    [data-slot="sidebar"][data-state="collapsed"]
+    [data-slot="sidebar-container"] {
+    transform: translateX(-100%);
+  }
+  .desktop-workspace [data-slot="sidebar-group-label"] {
+    transition: none;
+  }
+  .desktop-workspace [data-slot="sidebar-content"] {
+    gap: 6px;
+  }
+  .desktop-workspace [data-slot="sidebar-group"] {
+    padding: 4px 12px;
+  }
+  .desktop-workspace [data-slot="sidebar-group-label"] {
+    height: 26px;
+    font-size: 11px;
+  }
+  .desktop-workspace [data-slot="sidebar-menu"] {
+    gap: 2px;
+  }
+  .desktop-workspace [data-sidebar="menu-button"] {
+    height: 30px;
+    font-size: 13px;
+    border-radius: 6px;
+    transition-property: color, background-color, transform;
+  }
+  .desktop-workspace [data-sidebar="menu-button"]:active {
+    transform: translateY(1px);
+  }
+  .desktop-workspace
+    [data-sidebar="menu-button"]:not([data-active="true"]):hover {
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    color: var(--foreground);
+  }
+  .desktop-workspace .window-toolbar [data-slot="button"][data-size="default"],
+  .desktop-workspace .window-toolbar [data-slot="button"]:not([data-size]) {
+    height: 28px;
+  }
+  .desktop-workspace .workspace-nav-item {
+    height: auto;
+    min-height: 30px;
+  }
+  .desktop-workspace .workspace-nav-item > span {
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+  }
+  .desktop-workspace
+    [data-slot="input-group"]
+    > [data-slot="input-group-control"] {
+    height: 100%;
+    min-height: 0;
+  }
+  .desktop-workspace .data-list-panel [data-slot="button"][data-size="icon"] {
+    width: 28px;
+    height: 28px;
+  }
+  .desktop-workspace [data-slot="input"],
+  .desktop-workspace [data-slot="select-trigger"] {
+    font-size: 13px;
+  }
+  .desktop-workspace [data-slot="card"] {
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .desktop-workspace [data-slot="card-title"] {
+    font-size: 13px;
+  }
+  html[data-desktop-platform="darwin"] .desktop-sidebar-header {
+    padding-top: 52px;
+  }
+  html[data-desktop-platform="darwin"]
+    .desktop-workspace:has([data-slot="sidebar"][data-state="collapsed"])
+    .window-toolbar {
+    padding-left: 88px;
+  }
+  html[data-desktop-platform="darwin"] .window-toolbar {
+    transition: padding-left 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .desktop-workspace [data-slot="sidebar-gap"],
+    .desktop-workspace [data-slot="sidebar-container"],
+    html[data-desktop-platform="darwin"] .window-toolbar {
+      transition: none;
+    }
+  }
+  html[data-desktop-platform="darwin"] [data-window-drag] {
+    user-select: none;
+    --app-region: drag;
+  }
+  /* Segmented control: a quiet track with a raised selected segment. Used by every
+     tab-like switch (Tabs and single-choice ToggleGroups) so they all match. */
+  .segmented,
+  [data-slot="tabs-list"][data-variant="default"] {
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  }
+  .segmented [data-slot="toggle-group-item"],
+  [data-slot="tabs-trigger"] {
+    border-radius: var(--radius-md);
+    border-color: transparent;
+    background: transparent;
+    padding-inline: 0.75rem;
+    color: var(--muted-foreground);
+    box-shadow: none;
+  }
+  .segmented [data-slot="toggle-group-item"]:hover,
+  [data-slot="tabs-trigger"]:hover {
+    background: transparent;
+    color: var(--foreground);
+  }
+  .segmented [data-slot="toggle-group-item"][data-state="on"],
+  [data-slot="tabs-list"] [data-slot="tabs-trigger"][data-state="active"] {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent),
+      0 1px 2px oklch(0 0 0 / 6%);
+  }
+  .dark .segmented [data-slot="toggle-group-item"][data-state="on"],
+  .dark
+    [data-slot="tabs-list"]
+    [data-slot="tabs-trigger"][data-state="active"] {
+    background: color-mix(in oklab, var(--foreground) 16%, transparent);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .segmented
+    [data-slot="toggle-group-item"][data-setting-enabled][data-state="on"] {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: none;
+  }
+  /* Confirmation sheets: wide enough that CJK sentences do not break after one or two characters. */
+  [data-slot="alert-dialog-content"][data-size="default"] {
+    max-width: 28rem;
+  }
+  [data-slot="alert-dialog-description"],
+  [data-slot="dialog-description"] {
+    line-break: strict;
+    text-wrap: pretty;
+  }
+  @media (min-width: 640px) {
+    .preferences-form [data-slot="field"] {
+      display: grid;
+      grid-template-columns: 144px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .preferences-form [data-slot="field-label"] {
+      padding-top: 6px;
+    }
+    .preferences-form [data-slot="field-description"],
+    .preferences-form [data-slot="field-error"] {
+      grid-column: 2;
+    }
+  }
+}
+
+/* The sidebar enters once at startup. Page content stays still while data loads. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes drift-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+html.app-ready [data-slot="sidebar-group"],
+html.app-ready [data-slot="sidebar-footer"] {
+  animation: drift-in 560ms var(--ease-out) both;
+}
+html.app-ready [data-slot="sidebar-group"]:nth-of-type(1) {
+  animation-delay: 70ms;
+}
+html.app-ready [data-slot="sidebar-group"]:nth-of-type(2) {
+  animation-delay: 130ms;
+}
+html.app-ready [data-slot="sidebar-group"]:nth-of-type(3) {
+  animation-delay: 190ms;
+}
+html.app-ready [data-slot="sidebar-footer"] {
+  animation-delay: 250ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.app-ready [data-slot="sidebar-group"],
+  html.app-ready [data-slot="sidebar-footer"] {
+    animation: none;
+  }
+  [data-slot="skeleton"] {
+    animation: none;
+  }
+}

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>饼干大小姐 · 隔离验证环境</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      if (location.port !== "5175")
+        throw new Error(
+          "UI fixture page is restricted to the verification port",
+        );
+      await import("/src/main.ts");
+    </script>
+  </body>
+</html>

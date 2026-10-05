@@ -1,0 +1,8 @@
+html,body { margin:0; width:100%; height:100%; background:#000; color:#fff; font:14px system-ui,sans-serif; overflow:hidden; }
+.atvp { width:100%!important; height:100%!important; border-radius:0; aspect-ratio:auto!important; }
+video { width:100%; height:100%; object-fit:contain; }
+#error { position:absolute; inset:40% 1rem auto; z-index:30; text-align:center; padding:1rem; background:rgba(0,0,0,.85); }
+.atvp__btn:focus-visible,.atvp__fs-btn:focus-visible,.atvp__vol-btn:focus-visible { outline:2px solid #fff; outline-offset:4px; }
+
+#loading { position:absolute; inset:42% 1rem auto; z-index:20; margin:0; text-align:center; pointer-events:none; color:#fff; text-shadow:0 1px 3px #000; }
+[hidden] { display:none!important; }

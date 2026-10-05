@@ -1,0 +1,32 @@
+name: Bug report / 问题报告
+description: Report a reproducible issue / 提交可复现的问题
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version / 软件版本
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture / 系统与架构
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior / 预期与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error or screenshot / 报错或截图
+      description: Remove keys, captured bodies, credentials, and personal paths. / 删除密钥、采集正文、凭据与个人路径。

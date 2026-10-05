@@ -1,0 +1,23 @@
+{
+  "name": "binggan-desktop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "mygo build",
+    "generate": "mygo generate",
+    "setup": "npm --prefix frontend ci && go mod download && npm run generate",
+    "prepare:resources": "node scripts/prepare-resources.mjs",
+    "test": "node scripts/test.mjs",
+    "check": "npm run generate && npm test && npm --prefix frontend run build && bash scripts/check-structure.sh --final && npm run check:repository",
+    "check:repository": "node scripts/check-repository.mjs"
+  },
+  "devDependencies": {
+    "mygo-cli": "0.2.5"
+  },
+  "version": "2.0.0",
+  "description": "Binggan desktop workspace for capture, local video processing, and media management",
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

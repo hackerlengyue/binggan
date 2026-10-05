@@ -1,0 +1,15 @@
+* text=auto
+*.sh text eol=lf
+*.mjs text eol=lf
+*.go text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.svg text eol=lf
+*.png binary
+*.jpg binary
+*.woff2 binary
+*.mp4 binary
+*.sz binary
+*.aac binary
+*.bin binary
