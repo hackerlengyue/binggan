@@ -52,6 +52,31 @@ private final class PermissionHelper: NSObject {
 private enum PermissionHelperMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.count == 2,
+           CommandLine.arguments[1] == "--verify-resources" {
+            guard let bundle = PermissionFlowResources.packageBundle,
+                  ["zh-Hans", "en"].allSatisfy({ bundle.localizations.contains($0) }) else {
+                fputs("PermissionFlow localization resources are missing\n", stderr)
+                exit(1)
+            }
+            let translations: [String: String] = Dictionary(uniqueKeysWithValues: ["zh-Hans", "en"].map { locale in
+                (locale, PermissionFlowResources.localizedString(
+                    for: PermissionFlowResources.accessibilityNameKey,
+                    localeIdentifier: locale
+                ))
+            })
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.sortedKeys]
+                let data = try encoder.encode(translations)
+                FileHandle.standardOutput.write(data)
+                FileHandle.standardOutput.write(Data("\n".utf8))
+            } catch {
+                fputs("PermissionFlow resource verification failed\n", stderr)
+                exit(1)
+            }
+            return
+        }
         guard CommandLine.arguments.count == 3,
               CommandLine.arguments[1] == "--app",
               CommandLine.arguments[2].hasSuffix(".app"),

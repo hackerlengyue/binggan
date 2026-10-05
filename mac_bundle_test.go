@@ -4,6 +4,7 @@ package main
 
 import (
 	"debug/buildinfo"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -86,10 +87,19 @@ func TestMacBundleIncludesPermissionFlow(t *testing.T) {
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
 		t.Fatalf("PermissionFlow helper is not executable: %v", err)
 	}
-	for _, locale := range []string{"zh-Hans", "en"} {
-		stringsFile := filepath.Join(resources, "PermissionFlow_PermissionFlow.bundle", "Contents", "Resources", locale+".lproj", "Localizable.strings")
-		if info, err := os.Stat(stringsFile); err != nil || info.Size() == 0 {
-			t.Fatalf("PermissionFlow %s localization missing: %v", locale, err)
+	// SwiftPM and Xcode can produce different resource bundle layouts. Ask the
+	// packaged helper to resolve translations through PermissionFlow itself.
+	output, err := exec.Command(helper, "--verify-resources").CombinedOutput()
+	if err != nil {
+		t.Fatalf("PermissionFlow packaged resources: %v: %s", err, output)
+	}
+	var translations map[string]string
+	if err := json.Unmarshal(output, &translations); err != nil {
+		t.Fatalf("PermissionFlow resource verification: %v: %s", err, output)
+	}
+	for locale, want := range map[string]string{"zh-Hans": "辅助功能", "en": "Accessibility"} {
+		if got := translations[locale]; got != want {
+			t.Fatalf("PermissionFlow %s translation = %q, want %q", locale, got, want)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(resources, "licenses", "PermissionFlow-MIT.txt")); err != nil {

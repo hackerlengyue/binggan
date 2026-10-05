@@ -129,6 +129,8 @@ npm run prepare:resources -- --platform windows-arm64
 npm run build -- -platform windows/amd64,windows/arm64
 ```
 
+On Windows, the build entry point passes UTF-8 to MyGo CLI's NSIS invocation so Chinese application names and paths work. It builds a temporary CLI source copy and leaves the Go module cache unchanged. Review this compatibility step when upgrading MyGo CLI.
+
 ## Automated builds and releases
 
 The [build workflow](../../.github/workflows/ci.yml) first runs Go and frontend tests, type checks, generated-binding checks, and repository checks on macOS. After those pass, MyGo builds the applications.

@@ -129,6 +129,8 @@ npm run prepare:resources -- --platform windows-arm64
 npm run build -- -platform windows/amd64,windows/arm64
 ```
 
+Windows 构建入口会为 MyGo CLI 的 NSIS 调用指定 UTF-8，支持中文应用名称和路径。兼容处理使用临时的 CLI 源码副本；Go module 缓存保持原样。升级 MyGo CLI 时需重新核对这项处理。
+
 ## 自动构建与发布
 
 [构建流程](../../.github/workflows/ci.yml) 先在 macOS 上运行 Go 与前端测试、类型检查、生成绑定一致性及仓库检查，通过后再使用 MyGo 构建应用。
