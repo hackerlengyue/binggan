@@ -17,11 +17,11 @@
 | Apple TV Like Player | [doraFX/apple-tv-like-player](https://github.com/doraFX/apple-tv-like-player) | [NOTICE](apple-tv-like-player.md) 与 [MIT](../../frontend/public/player/LICENSE)。 |
 | LXGW WenKai v1.522 | [项目发布页](https://github.com/lxgw/LxgwWenKai/releases/tag/v1.522) | [字体来源](lxgw-wenkai.md) 与 [SIL OFL 1.1](../../frontend/public/fonts/lxgw-wenkai/OFL.txt)。 |
 
-`resources/LICENSE` 属于 sing-box 相关许可说明。项目主许可证尚未确定；第三方许可文本不替代项目主许可证。分发平台工具时，需同时保留对应的许可证与来源信息。
+Binggan 的主许可证为 [GPL-3.0](../../LICENSE)，SPDX 标识为 `GPL-3.0-only`，应用随附文本位于 [Binggan-GPL-3.0.txt](../../resources/licenses/Binggan-GPL-3.0.txt)。`resources/LICENSE` 属于 sing-box 相关许可说明。分发平台工具时，需同时保留对应的许可证与来源信息。
 
 ## Logo、图标与视频
 
-这些素材由项目提供，尚未声明单独的复用许可。`docs/assets/` 中的图片为软件界面截图。
+Logo、图标和介绍视频由项目提供，`docs/assets/` 中的图片为软件界面截图。第三方素材的许可见上表。
 
 ## 测试夹具
 
@@ -33,8 +33,8 @@
 
 Each dependency and asset retains its original license. The table above links the main sources and local notices. The complete version inventory is in `go.mod`, `go.sum`, and both npm lockfiles.
 
-`resources/LICENSE` is a sing-box-related notice. The main project license is undecided; dependency licenses do not establish a license for the whole project. Keep the relevant licenses and source information with distributed platform tools.
+Binggan is licensed under [GPL-3.0](../../LICENSE), with the SPDX identifier `GPL-3.0-only`. The application includes a copy at [Binggan-GPL-3.0.txt](../../resources/licenses/Binggan-GPL-3.0.txt). `resources/LICENSE` is a sing-box-related notice. Keep the relevant licenses and source information with distributed platform tools.
 
-The project supplies the logo, icons, and introduction video without a separate reuse license declared here. Images in `docs/assets/` are screenshots of the application.
+The project supplies the logo, icons, and introduction video. Images in `docs/assets/` are screenshots of the application. Licenses for third-party assets are listed in the table above.
 
 Small media and key-algorithm fixtures in `internal/engine/testdata/` use fixed repeated characters, example passwords, and reference vectors. They are test inputs rather than captured user data.

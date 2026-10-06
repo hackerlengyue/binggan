@@ -23,7 +23,7 @@ npm run check
 
 只改文档时，检查链接、图片、命令和双语内容即可。功能修改应运行相关测试；涉及权限、播放器或原生能力时，说明实机验证范围。
 
-PR 请写清要解决的问题、修改后的行为及验证结果。项目主许可证尚未确定，提交贡献前请确认许可状态。
+PR 请写清要解决的问题、修改后的行为及验证结果。原创代码贡献应采用项目的 [GPL-3.0 许可证](../LICENSE)；引入第三方代码时，保留其来源与原有许可声明。
 
 ---
 
@@ -48,4 +48,4 @@ Launch the development workspace as described in the README and test with `.loca
 
 Run `npm run check` for code changes. For documentation, check links, images, commands, and both language versions. State the extent of native testing when permissions, player control, or other native capabilities are affected.
 
-Describe the problem, resulting behavior, and verification in the PR. The main project license is undecided; confirm its status before contributing.
+Describe the problem, resulting behavior, and verification in the PR. Original code contributions should use the project's [GPL-3.0 license](../LICENSE). Retain the source and original license notices for third-party code.

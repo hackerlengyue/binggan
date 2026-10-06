@@ -1,6 +1,7 @@
 {
   "name": "binggan-desktop",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",

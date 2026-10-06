@@ -6,6 +6,7 @@
   <p>
     <a href="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml"><img src="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml/badge.svg" alt="自动构建" /></a>
     <img src="https://img.shields.io/badge/version-2.0.0-f2b9c7?style=flat-square" alt="版本 2.0.0" />
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="许可 GPL-3.0" /></a>
     <img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat-square" alt="Go 1.27.1" />
     <img src="https://img.shields.io/badge/MyGo-0.2.5-252525?style=flat-square" alt="MyGo 0.2.5" />
     <img src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square" alt="Vue 3" />
@@ -123,6 +124,7 @@ npm run check
 ```text
 binggan/
 ├── README.md                    项目说明
+├── LICENSE                      GPL-3.0 许可证
 ├── cmd/capture-service/         采集辅助程序
 ├── internal/                    Go 业务、存储、处理与测试
 ├── frontend/                    Vue 界面与生成的 MyGo 客户端
@@ -141,7 +143,7 @@ binggan/
 
 ## 许可
 
-项目主许可证尚未确定。第三方依赖各自的许可证、资源来源及 Logo、视频的许可状态见 [第三方许可与资源](docs/third-party/README.md)。其中包含 GPL-3.0 组件，现有许可文件已保留。
+Binggan 采用 [GNU General Public License v3.0（GPL-3.0）](LICENSE)，SPDX 标识为 `GPL-3.0-only`。第三方依赖和素材保留各自的许可证，来源与许可文本见 [第三方许可与资源](docs/third-party/README.md)。
 
 ## 致谢
 

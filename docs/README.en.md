@@ -6,6 +6,7 @@
   <p>
     <a href="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml"><img src="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml/badge.svg" alt="Build" /></a>
     <img src="https://img.shields.io/badge/version-2.0.0-f2b9c7?style=flat-square" alt="Version 2.0.0" />
+    <a href="../LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0 license" /></a>
     <img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat-square" alt="Go 1.27.1" />
     <img src="https://img.shields.io/badge/MyGo-0.2.5-252525?style=flat-square" alt="MyGo 0.2.5" />
     <img src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square" alt="Vue 3" />
@@ -123,6 +124,7 @@ Pushes to `main` and pull requests run checks and build ARM64 and x64 archives f
 ```text
 binggan/
 ├── README.md                    Project guide
+├── LICENSE                      GPL-3.0 license
 ├── cmd/capture-service/         Capture helper
 ├── internal/                    Go services, storage, processing, and tests
 ├── frontend/                    Vue interface and generated MyGo client
@@ -141,7 +143,7 @@ binggan/
 
 ## License
 
-The main project license is undecided. See [Third-party notices](third-party/README.md#english) for dependency licenses, asset sources, and the status of the logo and video. Dependencies include GPL-3.0 components; their license files are retained.
+Binggan is licensed under the [GNU General Public License v3.0 (GPL-3.0)](../LICENSE), with the SPDX identifier `GPL-3.0-only`. Third-party dependencies and assets retain their own licenses. See [Third-party notices](third-party/README.md#english) for sources and license texts.
 
 ## Acknowledgements
 
