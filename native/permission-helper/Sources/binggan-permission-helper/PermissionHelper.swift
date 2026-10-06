@@ -54,9 +54,13 @@ private enum PermissionHelperMain {
     static func main() {
         if CommandLine.arguments.count == 2,
            CommandLine.arguments[1] == "--verify-resources" {
-            guard let bundle = PermissionFlowResources.packageBundle,
-                  ["zh-Hans", "en"].allSatisfy({ bundle.localizations.contains($0) }) else {
-                fputs("PermissionFlow localization resources are missing\n", stderr)
+            guard let bundle = PermissionFlowResources.packageBundle else {
+                fputs("PermissionFlow resource bundle is missing\n", stderr)
+                exit(1)
+            }
+            let available = Set(bundle.localizations.map { $0.lowercased() })
+            guard ["zh-hans", "en"].allSatisfy({ available.contains($0) }) else {
+                fputs("PermissionFlow localizations are missing; found: \(available.sorted().joined(separator: ", "))\n", stderr)
                 exit(1)
             }
             let translations: [String: String] = Dictionary(uniqueKeysWithValues: ["zh-Hans", "en"].map { locale in

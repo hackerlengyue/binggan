@@ -5,6 +5,7 @@ package main
 import (
 	"debug/buildinfo"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -89,19 +90,7 @@ func TestMacBundleIncludesPermissionFlow(t *testing.T) {
 	}
 	// SwiftPM and Xcode can produce different resource bundle layouts. Ask the
 	// packaged helper to resolve translations through PermissionFlow itself.
-	output, err := exec.Command(helper, "--verify-resources").CombinedOutput()
-	if err != nil {
-		t.Fatalf("PermissionFlow packaged resources: %v: %s", err, output)
-	}
-	var translations map[string]string
-	if err := json.Unmarshal(output, &translations); err != nil {
-		t.Fatalf("PermissionFlow resource verification: %v: %s", err, output)
-	}
-	for locale, want := range map[string]string{"zh-Hans": "辅助功能", "en": "Accessibility"} {
-		if got := translations[locale]; got != want {
-			t.Fatalf("PermissionFlow %s translation = %q, want %q", locale, got, want)
-		}
-	}
+	assertPermissionFlowTranslations(t, helper)
 	if _, err := os.Stat(filepath.Join(resources, "licenses", "PermissionFlow-MIT.txt")); err != nil {
 		t.Fatalf("PermissionFlow license missing: %v", err)
 	}
@@ -119,6 +108,74 @@ func TestMacBundleIncludesPermissionFlow(t *testing.T) {
 		t.Fatal("PermissionFlow helper accepted missing app path")
 	} else if failure, ok := err.(*exec.ExitError); !ok || failure.ExitCode() != 2 {
 		t.Fatalf("PermissionFlow helper argument validation: %v", err)
+	}
+	for _, localeName := range []string{"zh-Hans", "zh-hans"} {
+		t.Run(localeName, func(t *testing.T) {
+			fixture := t.TempDir()
+			fixtureHelper := filepath.Join(fixture, "tools", "binggan-permission-helper")
+			if err := os.MkdirAll(filepath.Dir(fixtureHelper), 0755); err != nil {
+				t.Fatal(err)
+			}
+			binary, err := os.ReadFile(helper)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(fixtureHelper, binary, 0755); err != nil {
+				t.Fatal(err)
+			}
+			resourceName := "PermissionFlow_PermissionFlow.bundle"
+			fixtureResources := filepath.Join(fixture, resourceName)
+			if err := os.CopyFS(fixtureResources, os.DirFS(filepath.Join(resources, resourceName))); err != nil {
+				t.Fatal(err)
+			}
+			var chinese string
+			if err := filepath.WalkDir(fixtureResources, func(path string, entry fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if entry.IsDir() && strings.EqualFold(entry.Name(), "zh-Hans.lproj") {
+					chinese = path
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if chinese == "" {
+				t.Fatal("packaged Chinese localization is absent")
+			}
+			renamed := filepath.Join(filepath.Dir(chinese), localeName+".lproj")
+			if chinese != renamed {
+				if err := os.Rename(chinese, renamed); err != nil {
+					t.Fatal(err)
+				}
+			}
+			assertPermissionFlowTranslations(t, fixtureHelper)
+			if err := os.Rename(renamed, filepath.Join(t.TempDir(), "missing-localization")); err != nil {
+				t.Fatal(err)
+			}
+			out, err := exec.Command(fixtureHelper, "--verify-resources").CombinedOutput()
+			failure, ok := err.(*exec.ExitError)
+			if !ok || failure.ExitCode() != 1 {
+				t.Fatalf("missing localization was not rejected: %v: %s", err, out)
+			}
+		})
+	}
+}
+
+func assertPermissionFlowTranslations(t *testing.T, helper string) {
+	t.Helper()
+	output, err := exec.Command(helper, "--verify-resources").CombinedOutput()
+	if err != nil {
+		t.Fatalf("PermissionFlow packaged resources: %v: %s", err, output)
+	}
+	var translations map[string]string
+	if err := json.Unmarshal(output, &translations); err != nil {
+		t.Fatalf("PermissionFlow resource verification: %v: %s", err, output)
+	}
+	for locale, want := range map[string]string{"zh-Hans": "辅助功能", "en": "Accessibility"} {
+		if got := translations[locale]; got != want {
+			t.Fatalf("PermissionFlow %s translation = %q, want %q", locale, got, want)
+		}
 	}
 }
 
