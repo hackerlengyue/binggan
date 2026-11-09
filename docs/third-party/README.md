@@ -19,6 +19,8 @@
 
 Binggan 的主许可证为 [GPL-3.0](../../LICENSE)，SPDX 标识为 `GPL-3.0-only`，应用随附文本位于 [Binggan-GPL-3.0.txt](../../resources/licenses/Binggan-GPL-3.0.txt)。`resources/LICENSE` 属于 sing-box 相关许可说明。分发平台工具时，需同时保留对应的许可证与来源信息。
 
+Windows ARM64 的 FFmpeg 与 ffprobe 来自 BtbN 的 `ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0` 构建。原 `autobuild-2026-10-01-13-06` 发布资源已删除，资源清单改从 Binggan `v2.0.0` 的公开发布包中提取相同工具和分发许可证。下载包与提取文件分别校验 SHA-256，工具的原有校验值保持不变；其余 FFmpeg 来源未受此次删除影响。
+
 ## Logo、图标与视频
 
 Logo、图标和介绍视频由项目提供，`docs/assets/` 中的图片为软件界面截图。第三方素材的许可见上表。
@@ -34,6 +36,8 @@ Logo、图标和介绍视频由项目提供，`docs/assets/` 中的图片为软�
 Each dependency and asset retains its original license. The table above links the main sources and local notices. The complete version inventory is in `go.mod`, `go.sum`, and both npm lockfiles.
 
 Binggan is licensed under [GPL-3.0](../../LICENSE), with the SPDX identifier `GPL-3.0-only`. The application includes a copy at [Binggan-GPL-3.0.txt](../../resources/licenses/Binggan-GPL-3.0.txt). `resources/LICENSE` is a sing-box-related notice. Keep the relevant licenses and source information with distributed platform tools.
+
+Windows ARM64 FFmpeg and ffprobe originate from BtbN's `ffmpeg-n9.0.2-22-g46d8f462ee-winarm64-gpl-9.0` build. Its `autobuild-2026-10-01-13-06` release was removed, so the manifest extracts the identical tools and distribution license from Binggan's public `v2.0.0` release archive. The archive and extracted files have separate SHA-256 checks; the original tool hashes are unchanged. Other FFmpeg sources are unaffected by this deletion.
 
 The project supplies the logo, icons, and introduction video. Images in `docs/assets/` are screenshots of the application. Licenses for third-party assets are listed in the table above.
 
