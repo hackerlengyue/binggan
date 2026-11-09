@@ -310,8 +310,7 @@ static int elementCenter(AXUIElementRef element, CGPoint *point) {
     return 1;
 }
 
-// The verified 26.06.54 control bar places its titleless playback button
-// immediately above the right end of the wide playback slider. Prefer AXPress
+// Each verified profile locates its playback button relative to the slider. Prefer AXPress
 // so the player keeps working while another application's settings is focused.
 static AXUIElementRef findPlaybackButton(AXUIElementRef element, CGPoint expected, int depth, int *visited, double deadline) {
     if (depth > 18 || *visited >= 4000 || monotonicSeconds() >= deadline) return NULL;
@@ -364,7 +363,7 @@ static AXUIElementRef findPlaybackSlider(AXUIElementRef element, int depth, int 
 
 static int revealPlayerControlBar(pid_t pid);
 
-static int togglePlayerPlayback(pid_t pid) {
+static int togglePlayerPlayback(pid_t pid, double relativeX, double offsetX, double offsetY) {
     AXUIElementRef app = AXUIElementCreateApplication(pid);
     if (!app) return 0;
     int visited = 0;
@@ -393,7 +392,7 @@ static int togglePlayerPlayback(pid_t pid) {
     int located = elementCenter(slider, &center);
     CFRelease(slider);
     if (!located || !isfinite(width) || width <= 0) { CFRelease(app); return -7; }
-    CGPoint target = CGPointMake(center.x - width / 2.0 + 597, center.y + 22.5);
+    CGPoint target = CGPointMake(center.x - width / 2.0 + width * relativeX + offsetX, center.y + offsetY);
     visited = 0;
     AXUIElementRef button = findPlaybackButton(app, target, 0, &visited, deadline);
     CFRelease(app);
@@ -772,8 +771,6 @@ import (
 
 type darwinDriver struct{ actions sync.Mutex }
 
-const verifiedPlayerVersion = "26.06.54"
-
 func newDriver() Driver { return &darwinDriver{} }
 
 func playerPath() string {
@@ -813,7 +810,7 @@ func requireVerifiedPlayer() error {
 	if path == "" {
 		return ErrNotFound
 	}
-	if playerVersion(path) != verifiedPlayerVersion {
+	if _, verified := profileForVersion(playerVersion(path)); !verified {
 		return ErrUnverified
 	}
 	return nil
@@ -824,7 +821,7 @@ func (d *darwinDriver) Status() Status {
 	path := playerPath()
 	result.Installed = path != ""
 	result.Version = playerVersion(path)
-	result.VerifiedProfile = result.Version == verifiedPlayerVersion
+	_, result.VerifiedProfile = profileForVersion(result.Version)
 	_, result.Running = playerPID()
 	result.AccessibilityReady = C.AXIsProcessTrusted() != 0
 	switch {
@@ -835,9 +832,9 @@ func (d *darwinDriver) Status() Status {
 	case !result.VerifiedProfile:
 		result.Message = "已安装，但当前版本尚未完成静态适配验证"
 	case result.Running:
-		result.Message = "SzPlayer 26.06.54 已静态验证，可以读取可见控件"
+		result.Message = fmt.Sprintf("SzPlayer %s 已静态验证，可以读取可见控件", result.Version)
 	default:
-		result.Message = "SzPlayer 26.06.54 已静态验证，请先手动打开并登录播放器"
+		result.Message = fmt.Sprintf("SzPlayer %s 已静态验证，请先手动打开并登录播放器", result.Version)
 	}
 	return result
 }
@@ -1239,7 +1236,7 @@ func (d *darwinDriver) SetFullscreen(enabled bool) error {
 	if path == "" {
 		return ErrNotFound
 	}
-	if playerVersion(path) != verifiedPlayerVersion {
+	if _, verified := profileForVersion(playerVersion(path)); !verified {
 		return ErrUnverified
 	}
 	pid, running := playerPID()
@@ -1277,7 +1274,7 @@ func (d *darwinDriver) SetPlaybackRate(rate float64) error {
 	if path == "" {
 		return ErrNotFound
 	}
-	if playerVersion(path) != verifiedPlayerVersion {
+	if _, verified := profileForVersion(playerVersion(path)); !verified {
 		return ErrUnverified
 	}
 	pid, running := playerPID()
@@ -1315,14 +1312,15 @@ func (d *darwinDriver) TogglePlayback() error {
 	if path == "" {
 		return ErrNotFound
 	}
-	if playerVersion(path) != verifiedPlayerVersion {
+	profile, verified := profileForVersion(playerVersion(path))
+	if !verified {
 		return ErrUnverified
 	}
 	pid, running := playerPID()
 	if !running {
 		return fmt.Errorf("SzPlayer 尚未打开")
 	}
-	switch result := int(C.togglePlayerPlayback(C.pid_t(pid))); result {
+	switch result := int(C.togglePlayerPlayback(C.pid_t(pid), C.double(profile.playbackRelativeX), C.double(profile.playbackOffsetX), C.double(profile.playbackOffsetY))); result {
 	case 1:
 		return nil
 	case -1:
@@ -1356,7 +1354,7 @@ func (d *darwinDriver) Click(request ClickRequest) error {
 	if path == "" {
 		return ErrNotFound
 	}
-	if playerVersion(path) != verifiedPlayerVersion {
+	if _, verified := profileForVersion(playerVersion(path)); !verified {
 		return ErrUnverified
 	}
 	pid, running := playerPID()

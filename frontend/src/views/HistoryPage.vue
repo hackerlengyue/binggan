@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/table";
 import RecordWorkspace from "@/components/RecordWorkspace.vue";
 import TableSkeletonRows from "@/components/TableSkeletonRows.vue";
+import KeyImportButton from "@/components/KeyImportButton.vue";
 import { useTraceStore } from "@/stores/trace";
 const emit = defineEmits<{ rename: [id: string] }>();
 const route = useRoute();
@@ -107,7 +108,8 @@ const deleteOpen = ref(false);
 const deleteTargets = ref<{ id: string; name: string }[]>([]);
 const deleteError = ref("");
 const deleting = ref(false);
-onBeforeRouteLeave(() => !deleting.value);
+const importing = ref(false);
+onBeforeRouteLeave(() => !deleting.value && !importing.value);
 function askDelete(item: { id: string; name: string }) {
   deleteTargets.value = [{ id: item.id, name: item.name }];
   deleteError.value = "";
@@ -232,21 +234,34 @@ function download(id: string) {
           />
           <InputGroupAddon><Search /></InputGroupAddon>
         </InputGroup>
-        <div v-if="selectedIds.size" class="flex flex-wrap items-center gap-2">
-          <span class="text-sm text-muted-foreground" role="status">{{
-            t("已选 {count} 条", { count: selectedIds.size })
-          }}</span>
-          <Button variant="ghost" size="sm" @click="selectedIds.clear()">{{
-            t("取消选择")
-          }}</Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            :disabled="!!store.busy"
-            @click="askDeleteSelected"
+        <div class="flex min-w-0 flex-wrap items-start gap-2">
+          <div
+            v-if="selectedIds.size"
+            class="flex flex-wrap items-center gap-2"
           >
-            <Trash2 />{{ t("删除所选") }}</Button
-          >
+            <span class="text-sm text-muted-foreground" role="status">{{
+              t("已选 {count} 条", { count: selectedIds.size })
+            }}</span>
+            <Button variant="ghost" size="sm" @click="selectedIds.clear()">{{
+              t("取消选择")
+            }}</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              :disabled="!!store.busy || importing"
+              @click="askDeleteSelected"
+            >
+              <Trash2 />{{ t("删除所选") }}</Button
+            >
+          </div>
+          <KeyImportButton
+            :disabled="deleting"
+            @busy="importing = $event"
+            @imported="
+              search = '';
+              page = 1;
+            "
+          />
         </div>
       </div>
       <div class="flex min-h-0 flex-1 flex-col gap-4">
@@ -340,7 +355,7 @@ function download(id: string) {
                         variant="ghost"
                         size="icon"
                         class="size-8"
-                        :disabled="!!store.busy"
+                        :disabled="!!store.busy || importing"
                         :aria-label="t('改名 {name}', { name: item.name })"
                         :title="t('改名')"
                         @click="emit('rename', item.id)"
@@ -360,7 +375,7 @@ function download(id: string) {
                         variant="ghost"
                         size="icon"
                         class="size-8"
-                        :disabled="!!store.busy"
+                        :disabled="!!store.busy || importing"
                         :aria-label="t('删除 {name}', { name: item.name })"
                         :title="t('删除记录')"
                         @click="askDelete(item)"
@@ -380,12 +395,12 @@ function download(id: string) {
                     ? t(store.historyError)
                     : search
                       ? t("没有匹配的记录")
-                      : t("还没有提取记录")
+                      : t("还没有密钥记录")
                 }}</EmptyTitle>
                 <EmptyDescription v-if="!store.historyError">{{
                   search
                     ? t("试试其他名称。")
-                    : t("手动停止提取后，本次内容会保存在这里。")
+                    : t("停止提取后记录会保存在这里，也可手动上传密钥 JSON。")
                 }}</EmptyDescription>
               </EmptyHeader>
             </Empty>

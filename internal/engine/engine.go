@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -52,13 +51,14 @@ func Run(ctx context.Context, input, output string, k Key, appHash string, log L
 	if err := k.Validate(); err != nil {
 		return nil, err
 	}
-	mima, err := Mima(k.Data, appHash)
-	if err != nil {
-		return nil, err
+	mima := ""
+	if str(k.Data["pattern"]) != "4" {
+		mima, err = Mima(k.Data, appHash)
+		if err != nil {
+			return nil, err
+		}
+		mima = Transform(mima)
 	}
-	mima = Transform(mima)
-	den, _ := number(k.Data["den"])
-	pmn, _ := number(k.Data["pmn"])
 	src, err := os.Open(input)
 	if err != nil {
 		return nil, err
@@ -88,10 +88,9 @@ func Run(ctx context.Context, input, output string, k Key, appHash string, log L
 		if err = ctx.Err(); err != nil {
 			return nil, err
 		}
-		idx := segment(s.Offset, den, pmn)
-		pwd, ok := k.Passwords[strconv.FormatInt(idx, 10)]
-		if !ok {
-			return nil, fmt.Errorf("缺少第 %d 段密钥（文件偏移 %d）", idx, s.Offset)
+		key, keyErr := sampleKey(k, mima, s.Offset, s.Size)
+		if keyErr != nil {
+			return nil, keyErr
 		}
 		if cap(buf) < s.Size {
 			buf = make([]byte, s.Size)
@@ -100,7 +99,7 @@ func Run(ctx context.Context, input, output string, k Key, appHash string, log L
 		if _, err = raw.ReadAt(buf, s.Offset); err != nil {
 			return nil, err
 		}
-		c, e := rc4.NewCipher(packetKey(mima, pwd, s.Size))
+		c, e := rc4.NewCipher(key)
 		if e != nil {
 			return nil, e
 		}

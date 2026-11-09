@@ -4,11 +4,23 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/egoist/mygo"
+
 	"time.haomen/binggan/v2/internal/tunnel"
 )
 
 // CaptureService exposes the native capture and certificate operations.
 type CaptureService struct{ app *Workbench }
+
+// RoutingSession retains forwarding across the queue's separate capture files.
+// Channel cancellation also covers a lost/reloaded renderer.
+func (s *CaptureService) RoutingSession(ctx context.Context, ready *mygo.Channel[string]) error {
+	m, err := s.monitor(ctx)
+	if err != nil {
+		return err
+	}
+	return m.holdCaptureRouting(ctx, ready.Send, func() { s.app.app.SetCaptureState(false) })
+}
 
 func (s *CaptureService) monitor(ctx context.Context) (*Monitor, error) {
 	if err := s.app.wait(ctx); err != nil {

@@ -91,24 +91,29 @@ func (s *WorkspaceService) CaptureState(ctx context.Context) (bool, error) {
 	return plain(ctx, s, func(a *workspace.App) (bool, error) { return a.CaptureState(), nil })
 }
 
-func (s *WorkspaceService) SetCaptureState(ctx context.Context, enabled bool) (bool, error) {
+func (s *WorkspaceService) SetCaptureState(ctx context.Context, enabled bool, routingOwner string) (bool, error) {
 	return audited(ctx, s, "更新提取状态", true, func(a *workspace.App) (bool, error) {
-		// Stop accepting records before dismantling forwarding. On start, wait
-		// for forwarding before allowing the player to make its first request.
-		if !enabled {
-			a.SetCaptureState(false)
-		}
+		// Routing ownership and receiver state change under the same native
+		// lock, so a canceled queue cannot leave a late start accepting data.
 		if s.workbench.monitor != nil {
-			if err := s.workbench.monitor.setCaptureRouting(ctx, enabled); err != nil {
-				return a.CaptureState(), err
-			}
+			err := s.workbench.monitor.setCaptureRouting(ctx, enabled, routingOwner, func(value bool) { a.SetCaptureState(value) })
+			return a.CaptureState(), err
 		}
 		return a.SetCaptureState(enabled), nil
 	})
 }
 
-func (s *WorkspaceService) ClearTraces(ctx context.Context, clientID string) error {
-	_, err := audited(ctx, s, "清空接收记录", true, func(a *workspace.App) (struct{}, error) { return struct{}{}, a.ClearTraces(clientID) })
+func (s *WorkspaceService) ClearTraces(ctx context.Context, clientID string, routingOwner string) error {
+	_, err := audited(ctx, s, "清空接收记录", true, func(a *workspace.App) (struct{}, error) {
+		if m := s.workbench.monitor; m != nil {
+			m.op.Lock()
+			defer m.op.Unlock()
+			if routingOwner != m.routingHeld {
+				return struct{}{}, errors.New("采集任务与队列分流连接不匹配")
+			}
+		}
+		return struct{}{}, a.ClearTraces(clientID)
+	})
 	return err
 }
 

@@ -2,12 +2,15 @@
 
 [项目首页](../README.md) · [English README](README.en.md)
 
+[v2.0.1 更新说明 / Release notes](releases/v2.0.1.md)
+
 ## 开发 / Development
 
 | 内容 / Topic | 简体中文 | English |
 | --- | --- | --- |
 | 开发、测试与打包 / Development, testing, and packaging | [开发指南](development/README.md) | [Development guide](development/README.en.md) |
 | 前端开发与界面约定 / Frontend development and UI conventions | [前端指南](development/frontend.md) | [Frontend guide](development/frontend.md#english) |
+| SzPlayer 26.10.56 兼容性 / Compatibility | [版本差异与验证范围](development/szplayer-26.10.56.md) | [Archived analysis (Chinese)](development/szplayer-26.10.56-source.md) |
 
 ## 协作 / Contributing
 

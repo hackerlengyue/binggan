@@ -10,7 +10,7 @@
 npm run dev
 ```
 
-根 npm 项目、前端 npm 项目和 Go module 各自使用锁文件。MyGo CLI 固定为 `0.2.5`。
+根 npm 项目、前端 npm 项目和 Go module 各自使用锁文件。MyGo CLI 固定为 `0.8.3`。
 
 ## 常用命令
 
@@ -129,7 +129,7 @@ npm run prepare:resources -- --platform windows-arm64
 npm run build -- -platform windows/amd64,windows/arm64
 ```
 
-Windows 构建入口会为 MyGo CLI 的 NSIS 调用指定 UTF-8，支持中文应用名称和路径。兼容处理使用临时的 CLI 源码副本；Go module 缓存保持原样。升级 MyGo CLI 时需重新核对这项处理。
+MyGo CLI `0.8.3` 已为 NSIS 脚本写入 UTF-8 BOM，支持中文应用名称和路径。构建直接使用官方 CLI，无需临时源码补丁。macOS 开发和构建通过 `CGO_ENABLED=1` 启用辅助功能驱动。
 
 ## 自动构建与发布
 
@@ -143,11 +143,11 @@ Windows 构建入口会为 MyGo CLI 的 NSIS 调用指定 UTF-8，支持中文�
 
 在 [Build 构建记录](https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml) 中打开一次成功的运行，即可下载页面下方的 Artifacts，产物保留 14 天。标签构建的产物也会出现在 [Releases](https://github.com/hackerlengyue/binggan/releases)。
 
-标签必须与 `package.json` 中的版本一致，例如当前 `2.0.0` 对应 `v2.0.0`。更新版本时同步修改 `package.json`、锁文件、`frontend/package.json` 和 `mygo.config.ts`，提交后再推送标签：
+标签必须与 `package.json` 中的版本一致，例如当前 `2.0.1` 对应 `v2.0.1`。更新版本时同步修改 `package.json`、锁文件、`frontend/package.json` 和 `mygo.config.ts`，提交后再推送标签：
 
 ```sh
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.0.1
+git push origin v2.0.1
 ```
 
 macOS 产物使用本地 ad-hoc 签名，包含辅助功能驱动、PermissionFlow 和各自许可证。Windows 的实际运行未进行测试。CI 不启用需要真实播放器、证书信任或系统网络环境的可选测试。

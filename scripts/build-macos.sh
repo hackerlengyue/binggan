@@ -13,19 +13,8 @@ esac
 real_go=$(command -v go)
 [[ $real_go = /* ]] || { printf 'go executable must resolve to an absolute path\n' >&2; exit 1; }
 
-# MyGo CLI 0.2.5 unconditionally sets CGO_ENABLED=0 for its child Go builds.
-# Only the macOS app needs cgo for our Accessibility driver; retain MyGo's
-# generated bindings, frontend overlay, bundle metadata, resources and signing.
-wrapper_dir=$(mktemp -d "${TMPDIR:-/tmp}/binggan-macos-go.XXXXXX")
-trap 'rm -rf "$wrapper_dir"' EXIT
-cat > "$wrapper_dir/go" <<'GO_WRAPPER'
-#!/usr/bin/env bash
-set -euo pipefail
-exec env CGO_ENABLED=1 "$BINGGAN_REAL_GO" "$@"
-GO_WRAPPER
-chmod 755 "$wrapper_dir/go"
-export BINGGAN_REAL_GO=$real_go
-export PATH="$wrapper_dir:$PATH"
+# MyGo respects the explicit setting required by our Accessibility driver.
+export CGO_ENABLED=1
 
 compiled=$(
   GOOS=darwin GOARCH=arm64 go list -f '{{join .CgoFiles " "}}' ./internal/playerautomation

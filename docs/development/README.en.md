@@ -10,7 +10,7 @@ Follow [Getting started](../README.en.md#getting-started) to install dependencie
 npm run dev
 ```
 
-The root npm project, frontend npm project, and Go module each have their own lockfiles. MyGo CLI is pinned to `0.2.5`.
+The root npm project, frontend npm project, and Go module each have their own lockfiles. MyGo CLI is pinned to `0.8.3`.
 
 ## Commands
 
@@ -129,7 +129,7 @@ npm run prepare:resources -- --platform windows-arm64
 npm run build -- -platform windows/amd64,windows/arm64
 ```
 
-On Windows, the build entry point passes UTF-8 to MyGo CLI's NSIS invocation so Chinese application names and paths work. It builds a temporary CLI source copy and leaves the Go module cache unchanged. Review this compatibility step when upgrading MyGo CLI.
+MyGo CLI `0.8.3` writes NSIS scripts with a UTF-8 BOM for Chinese application names and paths. Builds use the official CLI directly without a temporary source patch. macOS development and builds set `CGO_ENABLED=1` for the Accessibility driver.
 
 ## Automated builds and releases
 
@@ -143,11 +143,11 @@ The [build workflow](../../.github/workflows/ci.yml) first runs Go and frontend 
 
 Open a successful run in [Build](https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml) and download its Artifacts. They are retained for 14 days. Tagged builds also publish their archives to [Releases](https://github.com/hackerlengyue/binggan/releases).
 
-The tag must match the version in `package.json`: version `2.0.0` uses `v2.0.0`. When updating the version, change `package.json`, lockfiles, `frontend/package.json`, and `mygo.config.ts` together. Commit the changes before pushing the tag:
+The tag must match the version in `package.json`: version `2.0.1` uses `v2.0.1`. When updating the version, change `package.json`, lockfiles, `frontend/package.json`, and `mygo.config.ts` together. Commit the changes before pushing the tag:
 
 ```sh
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.0.1
+git push origin v2.0.1
 ```
 
 macOS archives use ad-hoc signing and include the Accessibility driver, PermissionFlow, and their licenses. Windows runtime behavior has not been tested. CI does not enable optional tests requiring the real player, certificate trust, or system networking.

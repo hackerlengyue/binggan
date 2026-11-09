@@ -2,7 +2,7 @@
   "name": "binggan-desktop-ui",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,7 +20,7 @@
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "mygo-runtime": "0.2.5",
+    "mygo-runtime": "0.8.3",
     "pinia": "^4.0.3",
     "reka-ui": "^2.10.5",
     "tailwind-merge": "^3.7.0",

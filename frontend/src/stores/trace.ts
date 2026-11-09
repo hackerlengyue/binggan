@@ -5,6 +5,7 @@ import { withDeadline } from "@/lib/deadline";
 import { computed, ref } from "vue";
 import type { ConnectionLog } from "@/lib/connection-state";
 import { buildKeyJson, isKeyRequest } from "@/lib/keyjson";
+import { makeImportedKey, type KeyFile } from "@/lib/key-import";
 import { defineStore } from "pinia";
 import {
   keyFilename,
@@ -254,6 +255,31 @@ export const useTraceStore = defineStore("trace-v2", () => {
       }
     }
   }
+  async function importKeyFiles(files: KeyFile[]) {
+    if (busy.value) throw new Error("请等待当前操作完成");
+    if (!files.length || files.length > 100)
+      throw new Error("每次请选择 1–100 个密钥文件。");
+    // Parse the complete batch before changing history, including capture state.
+    const incoming = files.map(makeImportedKey);
+    const document = readHistoryDocument(getHistoryRaw());
+    const next = [...document.items];
+    const imported = incoming.map((entry) => {
+      // A retry after a database failure reuses the pending record.
+      const existing = next.find(
+        (item) =>
+          item.source === "upload" &&
+          item.name === entry.name &&
+          JSON.stringify(item.keyJson) === JSON.stringify(entry.keyJson),
+      );
+      if (existing) return existing;
+      next.unshift(entry);
+      return entry;
+    });
+    setHistoryRaw(JSON.stringify({ version: 1, ...document, items: next }));
+    keyHistory.value = next;
+    await flushKeyHistory();
+    return imported;
+  }
   function renameHistory(id: string, name: string) {
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > 80)
@@ -394,9 +420,9 @@ export const useTraceStore = defineStore("trace-v2", () => {
       throw new Error("收到无法识别的流量记录");
     return item as unknown as CaptureEvent;
   }
-  async function setReceiverEnabled(enabled: boolean) {
+  async function setReceiverEnabled(enabled: boolean, routingOwner = "") {
     const actual = await withDeadline(
-      WorkspaceService.setCaptureState(enabled),
+      WorkspaceService.setCaptureState(enabled, routingOwner),
       12000,
     );
     if (actual !== enabled) throw new Error("接收服务没有确认提取状态");
@@ -571,9 +597,12 @@ export const useTraceStore = defineStore("trace-v2", () => {
     if (typeof window !== "undefined")
       window.removeEventListener("storage", onStorage);
   }
-  async function resetReceiver() {
+  async function resetReceiver(routingOwner = "") {
     clearVersion++;
-    await withDeadline(WorkspaceService.clearTraces(captureClientId), 12000);
+    await withDeadline(
+      WorkspaceService.clearTraces(captureClientId, routingOwner),
+      12000,
+    );
     traces.value = [];
     resetEvents();
     selectedId.value = "";
@@ -581,7 +610,10 @@ export const useTraceStore = defineStore("trace-v2", () => {
     captureArchived.value = false;
     pendingFinishId.value = "";
   }
-  async function startCapture(onCreated?: (id: string) => void) {
+  async function startCapture(
+    onCreated?: (id: string) => void,
+    routingOwner = "",
+  ) {
     if (busy.value || captureEnabled.value) return;
     busy.value = "start";
     try {
@@ -596,7 +628,7 @@ export const useTraceStore = defineStore("trace-v2", () => {
       // before resetting the receiver's working buffer.
       saveCurrentKey(true);
       await flushKeyHistory();
-      await resetReceiver();
+      await resetReceiver(routingOwner);
       captureSession.value = {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
@@ -607,17 +639,17 @@ export const useTraceStore = defineStore("trace-v2", () => {
       // Persist the boundary before enabling capture, including an empty capture.
       saveCurrentKey(true);
       await flushKeyHistory();
-      await setReceiverEnabled(true);
+      await setReceiverEnabled(true, routingOwner);
     } finally {
       busy.value = "";
     }
   }
-  async function pauseCapture() {
+  async function pauseCapture(routingOwner = "") {
     if (busy.value || !captureEnabled.value)
       throw new Error("当前没有可暂停的提取任务");
-    await setReceiverEnabled(false);
+    await setReceiverEnabled(false, routingOwner);
   }
-  async function resumeCapture() {
+  async function resumeCapture(routingOwner = "") {
     if (
       busy.value ||
       captureEnabled.value ||
@@ -625,9 +657,11 @@ export const useTraceStore = defineStore("trace-v2", () => {
       captureArchived.value
     )
       throw new Error("没有可继续的提取记录");
-    await setReceiverEnabled(true);
+    await setReceiverEnabled(true, routingOwner);
   }
-  async function stopCapture(options: { deferReset?: boolean } = {}) {
+  async function stopCapture(
+    options: { deferReset?: boolean; routingOwner?: string } = {},
+  ) {
     if (
       busy.value ||
       (!captureEnabled.value &&
@@ -636,7 +670,7 @@ export const useTraceStore = defineStore("trace-v2", () => {
       return null;
     busy.value = "stop";
     try {
-      await setReceiverEnabled(false);
+      await setReceiverEnabled(false, options.routingOwner);
       await refresh(true);
       const id = currentHistoryId.value;
       const session = captureSession.value && { ...captureSession.value };
@@ -705,6 +739,7 @@ export const useTraceStore = defineStore("trace-v2", () => {
     retryKeyHistory,
     saveCurrentKey,
     downloadHistory,
+    importKeyFiles,
     renameHistory,
     deleteHistory,
     deleteHistories,

@@ -58,6 +58,7 @@ export interface KeyJsonPayload {
     audio?: number;
     softwareName?: string;
     appMd5?: string;
+    mimatuokeqian?: string;
   };
 }
 export interface KeyResult {
@@ -70,6 +71,7 @@ export interface KeyResult {
 }
 
 export interface KeyHistoryEntry {
+  source?: "upload";
   name: string;
   valid: boolean;
   issues: string[];

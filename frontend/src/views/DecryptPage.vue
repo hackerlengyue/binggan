@@ -183,7 +183,7 @@ const keys = computed(() => [
   ...history.value.map((item) => ({
     id: `history:${item.id}`,
     name: item.name,
-    source: t("提取记录"),
+    source: t(item.source === "upload" ? "手动上传" : "提取记录"),
   })),
   ...diskKeys.value.map((item) => ({
     id: `disk:${item.id}`,

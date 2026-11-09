@@ -62,7 +62,7 @@ const count = computed(() => Object.keys(props.payload.passwords).length);
       />
       <Empty v-else class="min-h-80"
         ><EmptyDescription>{{
-          t("这条旧记录未保存请求内容")
+          t("这条记录未保存请求内容")
         }}</EmptyDescription></Empty
       >
     </TabsContent>

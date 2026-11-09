@@ -91,6 +91,13 @@ export class FakeMyGo {
         return { stage: "ready" };
       case "CaptureService.Retry":
         return { stage: "ready" };
+      case "CaptureService.RoutingSession": {
+        const source = args[0] as FakeChannel;
+        queueMicrotask(() =>
+          source.emit("queue-routing-test" as unknown as CaptureNotice),
+        );
+        return source.subscribe();
+      }
       case "WorkspaceService.History":
         return this.events.slice(-(Number(args[0]) || 2500));
       case "WorkspaceService.CaptureState":

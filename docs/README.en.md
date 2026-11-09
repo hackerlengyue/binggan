@@ -5,10 +5,10 @@
   <p>Key capture · Playback orchestration · Video decryption · Media library</p>
   <p>
     <a href="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml"><img src="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml/badge.svg" alt="Build" /></a>
-    <img src="https://img.shields.io/badge/version-2.0.0-f2b9c7?style=flat-square" alt="Version 2.0.0" />
+    <img src="https://img.shields.io/badge/version-2.0.1-f2b9c7?style=flat-square" alt="Version 2.0.1" />
     <a href="../LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="GPL-3.0 license" /></a>
-    <img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat-square" alt="Go 1.27.1" />
-    <img src="https://img.shields.io/badge/MyGo-0.2.5-252525?style=flat-square" alt="MyGo 0.2.5" />
+    <img src="https://img.shields.io/badge/Go-1.27.3-00ADD8?style=flat-square" alt="Go 1.27.3" />
+    <img src="https://img.shields.io/badge/MyGo-0.8.3-252525?style=flat-square" alt="MyGo 0.8.3" />
     <img src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square" alt="Vue 3" />
   </p>
   <p><a href="../README.md">简体中文</a> · <strong>English</strong></p>
@@ -18,6 +18,8 @@
 ---
 
 Binggan is a desktop tool for local video processing. Capture and manage keys, queue lessons, decrypt `.sz` files in batches, and browse or play the exported MP4s in one workspace. Capture records, tasks, and settings are stored locally. The interface supports Simplified Chinese, English, and light and dark themes.
+
+[v2.0.1 release notes](releases/v2.0.1.md#english) · [Download the latest release](https://github.com/hackerlengyue/binggan/releases/latest)
 
 ## Preview
 
@@ -30,7 +32,7 @@ Binggan is a desktop tool for local video processing. Capture and manage keys, q
 | Area | Capabilities |
 | --- | --- |
 | Capture | Start and stop local capture, inspect requests, and save key records. |
-| Key management | Name, search, copy, export, and delete saved records. |
+| Key management | Upload key JSON files, then name, search, copy, export, and delete saved records. |
 | Playback orchestration | Queue selected Sz lessons and track playback, capture, and record saving. |
 | Video decryption | Import local `.sz` files and matching key JSON, run batch jobs, and export MP4. |
 | Media library | Browse finished resources, view thumbnails, play video, and seek. |
@@ -57,11 +59,11 @@ For development from source:
 
 | Tool | Version and purpose |
 | --- | --- |
-| Go | `1.27.1+`, with the minimum declared in [go.mod](../go.mod), to compile the MyGo backend |
+| Go | `1.27.3+`, with the minimum declared in [go.mod](../go.mod), to compile the MyGo backend |
 | Node.js | `22.12.0+`, with the minimum declared in [package.json](../package.json); use the bundled npm to install dependencies and run frontend and development scripts |
 | macOS compiler tools | Xcode Command Line Tools, providing Clang and the system SDK for native compilation |
 
-MyGo CLI `0.2.5` is installed by `npm ci`. The resource preparation command downloads FFmpeg and ffprobe for the selected platform; global installations are not needed.
+MyGo CLI `0.8.3` is installed by `npm ci`. The resource preparation command downloads FFmpeg and ffprobe for the selected platform; global installations are not needed.
 
 **Packaging on macOS:** Swift `6.2+` and a compatible SDK are also required. See [macOS packaging](development/README.en.md#macos).
 

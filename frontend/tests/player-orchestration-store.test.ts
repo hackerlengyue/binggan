@@ -736,7 +736,9 @@ test("manual pause and end notify once; failed interrupted save asks for attenti
     await task.store.resume();
     await task.store.endTask();
     assert.deepEqual(
-      task.native?.calls.map((call) => call.args[0]),
+      task.native?.calls
+        .filter((call) => call.method === "NotificationService.Show")
+        .map((call) => call.args[0]),
       ["播放编排已开始", "播放编排已暂停", "播放编排已继续", "播放编排已结束"],
     );
   } finally {
@@ -754,7 +756,9 @@ test("manual pause and end notify once; failed interrupted save asks for attenti
     failed.releaseClick();
     await ended;
     assert.deepEqual(
-      failed.native?.calls.map((call) => call.args[0]),
+      failed.native?.calls
+        .filter((call) => call.method === "NotificationService.Show")
+        .map((call) => call.args[0]),
       ["播放编排已开始", "播放编排需要处理"],
     );
   } finally {

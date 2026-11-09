@@ -4,6 +4,8 @@ interface KeyAccumulator {
   sourceCount: number;
   updatedAt: string;
   cipherPassword: string;
+  mimatuokeqian?: string;
+  issues: Set<string>;
   uit: string;
   den: number;
   pmn: number;
@@ -26,6 +28,21 @@ function assignCandidates(
   candidates: PasswordCandidate[],
   fallbackIndex = "",
 ): void {
+  if (usesSlotIndexes(acc)) {
+    for (const { index, value } of candidates) {
+      const password = normalizePasswordValue(value);
+      if (!password) continue;
+      const target = normalizeIndex(index || fallbackIndex);
+      if (!target || Number(target) > 180) {
+        acc.issues.add("无法确定真实密钥槽位，请采集完整的 den、dts 和 pmn");
+        continue;
+      }
+      if (acc.passwords[target] && acc.passwords[target] !== password)
+        acc.issues.add("同一槽位存在不同密钥，请清空后重新采集");
+      acc.passwords[target] = password;
+    }
+    return;
+  }
   const unique = new Map<string, string>();
   for (const { index, value } of candidates) {
     const password = normalizePasswordValue(value);
@@ -41,6 +58,10 @@ function assignCandidates(
       index || (unique.size === 1 ? fallbackIndex : ""),
       password,
     );
+}
+
+export function usesSlotIndexes(data: { softwareName?: string }): boolean {
+  return data.softwareName === "MAC_sz_26.10.56";
 }
 
 const PERINUTE_PATH = "/api/courselocal/getperinutepwd";
@@ -90,8 +111,8 @@ function toPositiveInt(value: unknown): number {
 }
 
 function toPattern(value: unknown): string {
-  const text = toNonEmptyString(value);
-  if (text === "1" || text === "3") {
+  const text = value === null ? "<null>" : toNonEmptyString(value);
+  if (["1", "3", "4", "<null>"].includes(text)) {
     return text;
   }
   return "";
@@ -407,7 +428,11 @@ function inferPatternFromUrl(url: string): string {
 function applyFromRawText(
   raw: string,
   acc: KeyAccumulator,
-  options: { fallbackIndex?: string; url?: string } = {},
+  options: {
+    fallbackIndex?: string;
+    url?: string;
+    parametersOnly?: boolean;
+  } = {},
 ): void {
   applyPwdData(
     {
@@ -420,7 +445,7 @@ function applyFromRawText(
   const candidates: PasswordCandidate[] = [];
 
   const inferredPattern = options.url ? inferPatternFromUrl(options.url) : "";
-  if (!acc.pattern && inferredPattern) {
+  if (!usesSlotIndexes(acc) && !acc.pattern && inferredPattern) {
     acc.pattern = inferredPattern;
   }
 
@@ -434,7 +459,7 @@ function applyFromRawText(
     acc.pmn = pmn;
   }
   const num = parseIntFromText(raw, ["num"]);
-  if (acc.pmn <= 0 && num > 0) {
+  if (!usesSlotIndexes(acc) && acc.pmn <= 0 && num > 0) {
     acc.pmn = num;
   }
 
@@ -496,7 +521,7 @@ function applyFromRawText(
     const pwd = decodeMaybe((match[1] || "").trim());
     candidates.push({ index: "", value: pwd });
   }
-  assignCandidates(acc, candidates, fallbackIndex);
+  if (!options.parametersOnly) assignCandidates(acc, candidates, fallbackIndex);
 }
 
 function applyPwdData(
@@ -528,19 +553,20 @@ function applyPwdData(
   const pmn = toPositiveInt(record.pmn);
   if (pmn > 0) {
     acc.pmn = pmn;
-  } else if (acc.pmn <= 0) {
+  } else if (!usesSlotIndexes(acc) && acc.pmn <= 0) {
     const num = toPositiveInt(record.num);
     if (num > 0) {
       acc.pmn = num;
     }
   }
 
-  const pattern = toPattern(record.pattern);
-  if (pattern) {
-    acc.pattern = pattern;
-  }
+  if (Object.hasOwn(record, "pattern")) acc.pattern = toPattern(record.pattern);
+  if (typeof record.mimatuokeqian === "string")
+    acc.mimatuokeqian = record.mimatuokeqian;
 
-  const whenLong = toPositiveInt(record.whenLong ?? record.whenlong);
+  const whenLong = toPositiveInt(
+    record.whenLong ?? record.whenlong ?? record.den1,
+  );
   if (whenLong > 0) {
     acc.whenLong = whenLong;
   }
@@ -633,50 +659,70 @@ function buildPayload(acc: KeyAccumulator): KeyJsonPayload {
   const whenLong = acc.whenLong > 0 ? acc.whenLong : den;
 
   return {
-    passwords: sortPasswords(acc.passwords),
+    passwords: usesSlotIndexes(acc)
+      ? { ...acc.passwords }
+      : sortPasswords(acc.passwords),
     getPwdData: {
       密码: acc.cipherPassword,
       uit: acc.uit,
-      den,
+      den: usesSlotIndexes(acc) && whenLong > 0 ? whenLong : den,
       pmn,
       pattern: acc.pattern,
       whenLong,
       ...(acc.softwareName ? { softwareName: acc.softwareName } : {}),
       ...(acc.appMd5 ? { appMd5: acc.appMd5 } : {}),
       ...(acc.audio !== undefined ? { audio: acc.audio } : {}),
+      ...(acc.mimatuokeqian !== undefined
+        ? { mimatuokeqian: acc.mimatuokeqian }
+        : {}),
     },
   };
 }
 
 export function validatePayload(payload: KeyJsonPayload): string[] {
   const issues: string[] = [];
-
-  if (!payload.getPwdData["密码"]) {
-    issues.push("密码 为空");
+  const data = payload.getPwdData;
+  const slots = data.pattern === "1" || data.pattern === "3";
+  if (data.pattern === "4") {
+    if (
+      !data.mimatuokeqian ||
+      new TextEncoder().encode(data.mimatuokeqian).length > 256 ||
+      data.mimatuokeqian.includes("\0")
+    )
+      issues.push("模式 4 需要 mimatuokeqian 明文密钥");
+  } else {
+    if (!data["密码"]) issues.push("密码 为空");
+    if (!data.uit) issues.push("uit 为空");
   }
-  if (!payload.getPwdData.uit) {
-    issues.push("uit 为空");
+  if (slots) {
+    if (!(data.whenLong > 0 || data.den > 0)) issues.push("den 必须大于 0");
+    if (!(data.pmn > 0)) issues.push("pmn 必须大于 0");
+    if (Object.keys(payload.passwords).length < 1)
+      issues.push("passwords 至少 1 条");
+    if (
+      usesSlotIndexes(data) &&
+      data.pattern === "1" &&
+      !payload.passwords[String(data.pmn)]
+    )
+      issues.push(`模式 1 缺少固定第 ${data.pmn} 槽密钥`);
   }
-  if (!(payload.getPwdData.den > 0)) {
-    issues.push("den 必须大于 0");
-  }
-  if (!(payload.getPwdData.pmn > 0)) {
-    issues.push("pmn 必须大于 0");
-  }
-  if (!(
-    payload.getPwdData.pattern === "1" || payload.getPwdData.pattern === "3"
-  )) {
-    issues.push("pattern 必须是 1 或 3");
-  }
-  if (Object.keys(payload.passwords).length < 1) {
-    issues.push("passwords 至少 1 条");
-  }
-
+  if (!["1", "3", "4", "<null>"].includes(data.pattern))
+    issues.push("pattern 必须是 1、3、<null> 或 4");
+  if (
+    Object.values(payload.passwords).some((value) =>
+      [
+        "4dbe89a69865bf2adb092e567a1b5b56",
+        "01234567890123456789012345678901",
+      ].includes(value),
+    )
+  )
+    issues.push("分段密钥仍为播放器占位符，请重新采集");
   return issues;
 }
 
 function createAccumulator(): KeyAccumulator {
   return {
+    issues: new Set(),
     playerVersions: new Set(),
     playerHashes: new Set(),
     sourceCount: 0,
@@ -696,7 +742,11 @@ function createAccumulator(): KeyAccumulator {
 function collectFromBody(
   rawBody: string,
   acc: KeyAccumulator,
-  options: { fallbackIndex?: string; url?: string } = {},
+  options: {
+    fallbackIndex?: string;
+    url?: string;
+    parametersOnly?: boolean;
+  } = {},
 ): boolean {
   const body = rawBody.trim();
   if (!body) {
@@ -705,13 +755,15 @@ function collectFromBody(
 
   const before = getStateHash(acc);
   const inferredPattern = options.url ? inferPatternFromUrl(options.url) : "";
-  if (!acc.pattern && inferredPattern) acc.pattern = inferredPattern;
+  if (!usesSlotIndexes(acc) && !acc.pattern && inferredPattern)
+    acc.pattern = inferredPattern;
 
   const parsed = parseJsonLoose(body);
   if (parsed && typeof parsed === "object") {
     const candidates: PasswordCandidate[] = [];
     walkAndCollect(parsed, acc, candidates);
-    assignCandidates(acc, candidates, options.fallbackIndex);
+    if (!options.parametersOnly)
+      assignCandidates(acc, candidates, options.fallbackIndex);
   } else applyFromRawText(body, acc, options);
   const after = getStateHash(acc);
   return before !== after;
@@ -721,6 +773,30 @@ function resolveFallbackIndexFromRequest(
   requestBody: string,
   acc: KeyAccumulator,
 ): string {
+  if (usesSlotIndexes(acc)) {
+    if (acc.pattern === "1") return normalizeIndex(acc.pmn);
+    const parsed = parseJsonLoose(requestBody);
+    const request =
+      parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>)
+        : Object.fromEntries(new URLSearchParams(requestBody));
+    const dts = Number(request.dts);
+    const den = Number(request.den ?? acc.whenLong ?? acc.den);
+    const num = Number(request.num ?? 1);
+    const offset = (dts * num) / den / acc.pmn;
+    if (
+      request.dts !== undefined &&
+      Number.isSafeInteger(dts) &&
+      dts >= 0 &&
+      den > 0 &&
+      acc.pmn > 0 &&
+      num === 1 &&
+      Number.isFinite(offset) &&
+      Math.abs(offset - Math.round(offset)) < 1e-7
+    )
+      return String(Math.min(180, Math.round(offset) + 1));
+    return "";
+  }
   const dts = parseIntFromText(requestBody, ["dts", "startTime", "start"]);
   if (dts > 0) {
     const key = String(dts);
@@ -768,6 +844,33 @@ export function buildKeyJson(traces: TraceEntry[]): KeyResult {
   const ordered = traces
     .filter((t) => isKeyRequest(t.url))
     .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  const indexed = ordered.some(
+    (trace) =>
+      headerValue(trace.request.headers, "softwarename") ===
+        "MAC_sz_26.10.56" ||
+      new URL(trace.url).searchParams.get("softwareName") ===
+        "MAC_sz_26.10.56" ||
+      trace.request.body.includes("MAC_sz_26.10.56"),
+  );
+  if (indexed) {
+    acc.softwareName = "MAC_sz_26.10.56";
+    for (const trace of ordered) {
+      if (
+        trace.status < 200 ||
+        trace.status >= 300 ||
+        trace.requestTruncated ||
+        trace.responseTruncated ||
+        !isPerinuteUrl(trace.url)
+      )
+        continue;
+      const parsed = parseJsonLoose(trace.response.body) as {
+        data?: Record<string, unknown>;
+      } | null;
+      if (parsed?.data) applyPwdData(parsed.data, acc);
+    }
+  }
+  const fileIds = new Set<string>();
+  const userIds = new Set<string>();
   for (const trace of ordered) {
     if (trace.status < 200 || trace.status >= 300) continue;
     if (trace.responseTruncated || trace.requestTruncated) {
@@ -780,6 +883,13 @@ export function buildKeyJson(traces: TraceEntry[]): KeyResult {
       request && typeof request === "object"
         ? (request as Record<string, unknown>).videoId
         : undefined;
+    if (indexed && request && typeof request === "object") {
+      const fields = request as Record<string, unknown>;
+      const file = toNonEmptyString(fields.encryptionMd5);
+      const user = toNonEmptyString(fields.userId);
+      if (file) fileIds.add(file);
+      if (user) userIds.add(user);
+    }
     const queryId = new URL(trace.url).searchParams.get("videoId");
     const videoId = toNonEmptyString(bodyId ?? queryId);
     if (videoId) videoIds.add(videoId);
@@ -799,22 +909,38 @@ export function buildKeyJson(traces: TraceEntry[]): KeyResult {
     // Request bodies provide parameters; key values must come from a response.
     collectFromBody(trace.request.body, acc, {
       url: isPerinuteUrl(trace.url) ? undefined : trace.url,
+      parametersOnly: true,
     });
     acc.passwords = { ...oldPasswords };
     acc.nextIndex = oldIndex;
     if (isPerinuteUrl(trace.url)) {
       const uit = headerValue(trace.request.headers, "uit");
-      if (uit) {
-        acc.uit = uit;
-        users.add(uit);
-      }
       const cipher = extractMimaCipherFromBody(trace.response.body);
-      if (cipher) acc.cipherPassword = cipher;
-      collectFromBody(trace.response.body, acc);
+      if (indexed) {
+        // A refreshed request has its own AES key. Update both fields together.
+        if (cipher && uit) {
+          acc.uit = uit;
+          acc.cipherPassword = cipher;
+        }
+      } else {
+        if (uit) {
+          acc.uit = uit;
+          users.add(uit);
+        }
+        if (cipher) acc.cipherPassword = cipher;
+      }
+      collectFromBody(trace.response.body, acc, { parametersOnly: true });
       // The encrypted password is not a segment key, even if it looks like hex.
       acc.passwords = { ...oldPasswords };
       acc.nextIndex = oldIndex;
     } else {
+      const parsed = parseJsonLoose(trace.response.body) as {
+        data?: { type?: unknown };
+      } | null;
+      if (indexed && String(parsed?.data?.type) === "1") {
+        acc.issues.add("服务端拒绝下发分段密钥，请重新采集");
+        continue;
+      }
       const fallbackIndex = resolveFallbackIndexFromRequest(
         trace.request.body,
         acc,
@@ -826,7 +952,10 @@ export function buildKeyJson(traces: TraceEntry[]): KeyResult {
     }
   }
   const keyJson = buildPayload(acc);
-  const issues = validatePayload(keyJson);
+  const issues = [...validatePayload(keyJson), ...acc.issues];
+  if (fileIds.size > 1)
+    issues.push("检测到多个文件校验值，请清空后只采集一个视频");
+  if (userIds.size > 1) issues.push("检测到不同用户，请清空后重新采集");
   if (acc.playerVersions.size > 1 || acc.playerHashes.size > 1)
     issues.push("检测到不同播放器参数，请清空后使用同一版本重新采集");
   if (truncatedCount)

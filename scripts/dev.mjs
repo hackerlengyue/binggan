@@ -1,7 +1,7 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { delimiter, dirname, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -24,24 +24,8 @@ const devEnv = {
   CAPTURE_PROXY_PORT: process.env.CAPTURE_PROXY_PORT || "18789",
   BINGGAN_DEV_IDENTIFIER: "time.binggan.desktop.workspace" + identity,
 };
-// MyGo 0.2.5 disables cgo in child builds. The macOS AX driver needs it.
-if (process.platform === "darwin") {
-  const probe = spawnSync("go", ["env", "GOROOT"], { encoding: "utf8" });
-  if (probe.status !== 0) {
-    console.error(probe.stderr || "Go is required. Install the version in go.mod.");
-    process.exit(1);
-  }
-  const realGo = resolve(probe.stdout.trim(), "bin/go");
-  const wrapperDir = resolve(root, ".local/toolchain");
-  mkdirSync(wrapperDir, { recursive: true });
-  const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
-  writeFileSync(
-    resolve(wrapperDir, "go"),
-    `#!/bin/sh\nexec env CGO_ENABLED=1 ${quote(realGo)} "$@"\n`,
-    { mode: 0o755 },
-  );
-  devEnv.PATH = wrapperDir + delimiter + (process.env.PATH || "");
-}
+// MyGo respects CGO_ENABLED; the macOS Accessibility driver requires cgo.
+if (process.platform === "darwin") devEnv.CGO_ENABLED = "1";
 
 const child = spawn(
   process.execPath,

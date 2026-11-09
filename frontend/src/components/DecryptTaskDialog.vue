@@ -37,13 +37,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import KeyImportButton from "@/components/KeyImportButton.vue";
 import { matchingKeys, videoFileError } from "@/lib/decrypt-selection";
 import {
   type VideoChoice,
   type KeyChoice,
   type DecryptTask,
 } from "@/types/decrypt";
-import type { KeyJsonPayload } from "@/types/trace";
+import type { KeyHistoryEntry, KeyJsonPayload } from "@/types/trace";
 const props = defineProps<{
   files: VideoChoice[];
   keys: KeyChoice[];
@@ -89,6 +90,8 @@ const busy = ref(false),
   dragging = ref(false),
   choosingFiles = ref(false),
   choosingKeyFor = ref("");
+const importingKeys = ref(false);
+const working = computed(() => busy.value || importingKeys.value);
 const dropZone = ref<{ $el: HTMLElement }>();
 let disposed = false;
 const filtered = computed(() =>
@@ -259,11 +262,24 @@ function pickKey(key: KeyChoice) {
   }
   choosingKeyFor.value = "";
 }
+function keyImportBusy(value: boolean) {
+  importingKeys.value = value;
+  emit("busy", working.value);
+}
+function importedKeys(entries: KeyHistoryEntry[]) {
+  const key = entries[0];
+  if (!keyTarget.value || !key) return;
+  keyTarget.value.keyId = `history:${key.id}`;
+  keyTarget.value.matched = false;
+  choosingKeyFor.value = "";
+  keySearch.value = "";
+  error.value = "";
+}
 const uploading = ref(false);
 const uncertain = ref(false);
 let uploadController: AbortController | undefined;
 function onEscape(event: Event) {
-  if (busy.value) event.preventDefault();
+  if (working.value) event.preventDefault();
   else if (choosingKeyFor.value) {
     event.preventDefault();
     choosingKeyFor.value = "";
@@ -350,10 +366,10 @@ async function submit() {
 }
 </script>
 <template>
-  <Dialog :open="true" @update:open="!$event && !busy && emit('close')">
+  <Dialog :open="true" @update:open="!$event && !working && emit('close')">
     <DialogContent
       class="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-3xl grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-3xl"
-      :show-close-button="!busy"
+      :show-close-button="!working"
       @open-auto-focus.prevent
       @escape-key-down="onEscape"
       @interact-outside="$event.preventDefault()"
@@ -372,13 +388,27 @@ async function submit() {
       >
         <div class="min-h-0 space-y-5 overflow-y-auto px-6 py-5">
           <template v-if="choosingKeyFor">
-            <InputGroup
-              ><InputGroupInput
-                v-model="keySearch"
-                :placeholder="t('搜索密钥名称')"
-                :aria-label="t('搜索密钥名称')" /><InputGroupAddon
-                ><Search /></InputGroupAddon
-            ></InputGroup>
+            <div class="flex min-w-0 flex-wrap items-start gap-2">
+              <InputGroup class="min-w-0 flex-1 basis-48"
+                ><InputGroupInput
+                  v-model="keySearch"
+                  :placeholder="t('搜索密钥名称')"
+                  :aria-label="t('搜索密钥名称')" /><InputGroupAddon
+                  ><Search /></InputGroupAddon
+              ></InputGroup>
+              <KeyImportButton
+                :multiple="false"
+                @busy="keyImportBusy"
+                @imported="importedKeys"
+              />
+            </div>
+            <p class="text-xs text-muted-foreground">
+              {{
+                t(
+                  "支持 passwords / getPwdData 格式的 JSON，上传后保存到密钥管理。",
+                )
+              }}
+            </p>
             <p
               v-if="suggestions.length > 1 && !keySearch"
               class="text-xs text-muted-foreground"
@@ -390,6 +420,7 @@ async function submit() {
                 v-for="key in keyOptions"
                 :key="key.id"
                 type="button"
+                :disabled="importingKeys"
                 variant="ghost"
                 class="h-auto min-h-12 w-full justify-start gap-3 rounded-none px-3 py-3 text-left whitespace-normal"
                 @click="pickKey(key)"
@@ -410,7 +441,9 @@ async function submit() {
               <Empty v-if="!keyOptions.length" class="min-h-32 border-0"
                 ><EmptyHeader
                   ><EmptyTitle>{{
-                    t("没有匹配的密钥，请换个名称搜索。")
+                    props.keys.length
+                      ? t("没有匹配的密钥，请换个名称搜索。")
+                      : t("还没有可用密钥，请上传密钥 JSON。")
                   }}</EmptyTitle></EmptyHeader
                 ></Empty
               >
@@ -614,6 +647,7 @@ async function submit() {
             v-if="choosingKeyFor"
             type="button"
             variant="outline"
+            :disabled="importingKeys"
             @click="choosingKeyFor = ''"
             >{{ t("返回") }}</Button
           >

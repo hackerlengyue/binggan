@@ -234,7 +234,7 @@ func verifyMyGoHistory(t *testing.T, w *mygo.Window, manager *downloadManager, d
 	})()`); err != nil {
 		t.Fatal(err)
 	}
-	waitMyGoPage(t, w, `!document.querySelector('[role="alertdialog"]') && document.querySelector('section[aria-label="秘钥管理"]')?.innerText.includes('还没有提取记录')`)
+	waitMyGoPage(t, w, `!document.querySelector('[role="alertdialog"]') && document.querySelector('section[aria-label="秘钥管理"]')?.innerText.includes('还没有密钥记录')`)
 	var empty struct {
 		Items             []json.RawMessage `json:"items"`
 		DeletedCaptureIDs []string          `json:"deletedCaptureIds"`

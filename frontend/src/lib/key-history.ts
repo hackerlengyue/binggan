@@ -1,4 +1,9 @@
-import { buildKeyJson, isKeyRequest, validatePayload } from "@/lib/keyjson";
+import {
+  buildKeyJson,
+  isKeyRequest,
+  usesSlotIndexes,
+  validatePayload,
+} from "@/lib/keyjson";
 import type {
   KeyJsonPayload,
   KeyHistoryEntry,
@@ -101,8 +106,8 @@ function validTrace(value: TrafficRow): boolean {
   );
 }
 
-function validPayload(value: unknown): value is KeyJsonPayload {
-  if (!value || typeof value !== "object") return false;
+export function isKeyJsonPayload(value: unknown): value is KeyJsonPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const { passwords, getPwdData: data } = value as KeyJsonPayload;
   return (
     !!passwords &&
@@ -115,13 +120,17 @@ function validPayload(value: unknown): value is KeyJsonPayload {
         /^[a-f0-9]{32}$/i.test(value),
     ) &&
     !!data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
     typeof data.密码 === "string" &&
     typeof data.uit === "string" &&
     Number.isFinite(data.den) &&
     data.den >= 0 &&
     Number.isFinite(data.pmn) &&
     data.pmn >= 0 &&
-    ["", "1", "3"].includes(data.pattern) &&
+    ["", "1", "3", "4", "<null>"].includes(data.pattern) &&
+    (data.mimatuokeqian === undefined ||
+      typeof data.mimatuokeqian === "string") &&
     Number.isFinite(data.whenLong) &&
     data.whenLong >= 0
   );
@@ -148,7 +157,7 @@ function validateHistoryItems(value: unknown): KeyHistoryEntry[] {
       ids.has(entry.id) ||
       !Number.isFinite(Date.parse(entry.createdAt)) ||
       !Number.isFinite(Date.parse(entry.updatedAt)) ||
-      !validPayload(entry.keyJson)
+      !isKeyJsonPayload(entry.keyJson)
     )
       throw new Error("密钥历史无法读取");
     if (
@@ -162,10 +171,51 @@ function validateHistoryItems(value: unknown): KeyHistoryEntry[] {
         !entry.issues.every((v: unknown) => typeof v === "string"))
     )
       throw new Error("密钥历史无法读取");
+    if (usesSlotIndexes(entry.keyJson.getPwdData) && entry.traces?.length) {
+      const rebuilt = buildKeyJson(entry.traces);
+      const capturedValues = new Set(Object.values(rebuilt.keyJson.passwords));
+      const savedSlots = Object.entries(entry.keyJson.passwords);
+      const compacted =
+        savedSlots.every(([slot], i) => Number(slot) === i + 1) &&
+        new Set(savedSlots.map(([, value]) => value.toLowerCase())).size ===
+          savedSlots.length;
+      const coveredSlots = savedSlots.every(
+        ([slot, value]) =>
+          rebuilt.keyJson.passwords[slot]?.toLowerCase() ===
+          value.toLowerCase(),
+      );
+      if (
+        usesSlotIndexes(rebuilt.keyJson.getPwdData) &&
+        rebuilt.keyJson.getPwdData.密码 &&
+        rebuilt.keyJson.getPwdData.uit &&
+        (compacted || coveredSlots) &&
+        Object.values(entry.keyJson.passwords).every((value) =>
+          capturedValues.has(value.toLowerCase()),
+        )
+      ) {
+        // Repair earlier exports that compacted slot numbers, only when the
+        // preserved traffic covers every saved key. Never guess missing slots.
+        entry.keyJson = {
+          ...rebuilt.keyJson,
+          getPwdData: {
+            ...entry.keyJson.getPwdData,
+            ...rebuilt.keyJson.getPwdData,
+          },
+        };
+        entry.issues = [
+          ...rebuilt.issues,
+          ...(entry.issues ?? []).filter(
+            (issue) => !issue.includes("不同 uit"),
+          ),
+        ];
+      }
+    }
     entry.issues = [
       ...validatePayload(entry.keyJson),
       ...(entry.issues ?? []).filter((issue: string) =>
-        /截断|多个 videoId|不同 uit|不同播放器参数/.test(issue),
+        /截断|多个 videoId|不同 uit|不同播放器参数|槽位|服务端拒绝|多个文件校验值|不同用户/.test(
+          issue,
+        ),
       ),
     ];
     entry.valid = entry.issues.length === 0;
@@ -328,7 +378,8 @@ export function upsertKeyHistory(
   // A partial capture may see a later segment first. Once the raw responses
   // cover every saved key, rebuild their order instead of appending earlier
   // segments at the end. Legacy keys without raw traffic must still be retained.
-  const captured = Object.values(buildKeyJson(traces).keyJson.passwords);
+  const capturedResult = buildKeyJson(traces);
+  const captured = Object.values(capturedResult.keyJson.passwords);
   const capturedValues = new Set(captured);
   if (values.every((value) => capturedValues.has(value))) values = captured;
   const parameters = { ...incoming.keyJson.getPwdData };
@@ -383,16 +434,37 @@ export function upsertKeyHistory(
     traces,
     keyJson: {
       getPwdData: parameters,
-      passwords: Object.fromEntries(
-        values.map((value, i) => [String(i + 1), value]),
-      ),
+      passwords: usesSlotIndexes(parameters)
+        ? {
+            ...existing?.keyJson.passwords,
+            ...incoming.keyJson.passwords,
+            ...(usesSlotIndexes(capturedResult.keyJson.getPwdData)
+              ? capturedResult.keyJson.passwords
+              : {}),
+          }
+        : Object.fromEntries(values.map((value, i) => [String(i + 1), value])),
     },
   };
   next.issues = [
     ...validatePayload(next.keyJson),
     ...(playerConflict ? ["检测到不同播放器参数，请重新采集"] : []),
-    ...[...incoming.issues, ...(existing?.issues ?? [])].filter((issue) =>
-      /截断|多个 videoId|不同 uit|不同播放器参数/.test(issue),
+    ...(usesSlotIndexes(parameters) &&
+    existing &&
+    Object.entries(incoming.keyJson.passwords).some(
+      ([slot, value]) =>
+        existing.keyJson.passwords[slot] &&
+        existing.keyJson.passwords[slot] !== value,
+    )
+      ? ["同一槽位存在不同密钥，请清空后重新采集"]
+      : []),
+    ...[
+      ...incoming.issues,
+      ...(existing?.issues ?? []),
+      ...capturedResult.issues,
+    ].filter((issue) =>
+      /截断|多个 videoId|不同 uit|不同播放器参数|槽位|服务端拒绝|多个文件校验值|不同用户/.test(
+        issue,
+      ),
     ),
   ];
   next.valid = next.issues.length === 0;

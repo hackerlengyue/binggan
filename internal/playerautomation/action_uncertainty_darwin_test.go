@@ -58,7 +58,7 @@ static int revealPlayerControlBar(pid_t pid) { return 0; }
 int main(void) {
  AXError errors[]={kAXErrorCannotComplete,kAXErrorFailure,kAXErrorInvalidUIElement};
  for(int i=0;i<3;i++) {
-  clicks=0; actionResult=errors[i]; int result=togglePlayerPlayback(1);
+  clicks=0; actionResult=errors[i]; int result=togglePlayerPlayback(1,0,597,22.5);
   if(result==1 || clicks!=0) { fprintf(stderr,"uncertain action %d repeated: result=%d clicks=%d\n",errors[i],result,clicks); return 1; }
  }
  for(int i=0;i<3;i++) {
@@ -66,15 +66,15 @@ int main(void) {
   if(result==1 || clicks!=0) { fprintf(stderr,"uncertain rate action repeated: result=%d clicks=%d\n",result,clicks); return 4; }
  }
  clicks=0; actionResult=kAXErrorActionUnsupported;
- if(togglePlayerPlayback(1)!=1 || clicks!=1) return 2;
+ if(togglePlayerPlayback(1,0,597,22.5)!=1 || clicks!=1) return 2;
  clicks=0; actionResult=kAXErrorSuccess;
- if(togglePlayerPlayback(1)!=1 || clicks!=0) return 3;
+ if(togglePlayerPlayback(1,0,597,22.5)!=1 || clicks!=0) return 3;
  clicks=0; actionResult=kAXErrorSuccess;
  if(setPlayerPlaybackRate(1,"1.0X")!=1 || clicks!=0) return 5;
  int expected[]={-1,-6,-6,-7};
  for(int mode=1;mode<=4;mode++) {
   readMode=mode;clicks=0;clockNow=0;
-  int result=togglePlayerPlayback(1);
+  int result=togglePlayerPlayback(1,0,597,22.5);
   if(result!=expected[mode-1] || clicks) {
    fprintf(stderr,"unsafe or indistinguishable read failure: mode=%d result=%d clicks=%d\n",mode,result,clicks);return 6;
   }
@@ -110,6 +110,8 @@ func TestNativeToggleRevealsHiddenControlBarBeforePressing(t *testing.T) {
 #include <stdio.h>
 #include <unistd.h>
 static int hidden=1, reveals, clicks;
+static double clickedX, clickedY;
+static int exposeButton=1;
 static AXError actionResult = kAXErrorSuccess;
 static double monotonicSeconds(void) { return 0; }
 static AXUIElementRef fixtureElement(void) { return (AXUIElementRef)CFRetain(kCFBooleanTrue); }
@@ -119,29 +121,39 @@ static AXUIElementRef findPlaybackSlider(AXUIElementRef a,int b,int*c,double d) 
  return fixtureElement();
 }
 static AXUIElementRef findPlaybackButton(AXUIElementRef a,CGPoint b,int c,int*d,double deadline) {
+ if(!exposeButton) return NULL;
  return fixtureElement();
 }
 static double elementWidth(AXUIElementRef a) { return 624; }
 static int elementCenter(AXUIElementRef a,CGPoint*b) { *b=CGPointZero; return 1; }
 static AXError fixtureAction(AXUIElementRef a,CFStringRef b) { return actionResult; }
-static int postPlayerSingleClick(pid_t pid,double x,double y) { clicks++; return 1; }
+static int postPlayerSingleClick(pid_t pid,double x,double y) { clicks++; clickedX=x; clickedY=y; return 1; }
 static int revealPlayerControlBar(pid_t pid) { reveals++; hidden=0; return 1; }
 #define AXUIElementCreateApplication fixtureApp
 #define AXUIElementPerformAction fixtureAction
 ` + text[start:end] + `
 int main(void) {
  hidden=1; reveals=0; clicks=0; actionResult=kAXErrorSuccess;
- int result=togglePlayerPlayback(1);
+ int result=togglePlayerPlayback(1,0,597,22.5);
  if(result!=1 || reveals!=1 || clicks!=0) {
   fprintf(stderr,"hidden bar was not paused after reveal: result=%d reveals=%d clicks=%d\n",result,reveals,clicks);
   return 1;
  }
  hidden=0; reveals=0; clicks=0;
- result=togglePlayerPlayback(1);
+ result=togglePlayerPlayback(1,0,597,22.5);
  if(result!=1 || reveals!=0 || clicks!=0) {
   fprintf(stderr,"visible bar still revealed controls: result=%d reveals=%d clicks=%d\n",result,reveals,clicks);
   return 2;
  }
+ // New toolbar: centered, first cell at center - 141; never click the
+ // fullscreen button at the legacy offset. AXPress still takes precedence.
+ result=togglePlayerPlayback(1,0.5,-141,23.5);
+ if(result!=1 || clicks!=0) return 3;
+ exposeButton=0;
+ result=togglePlayerPlayback(1,0.5,-141,23.5);
+ if(result!=1 || clicks!=1 || fabs(clickedX+141)>0.01 || fabs(clickedY-23.5)>0.01) return 4;
+ result=togglePlayerPlayback(1,0,597,22.5);
+ if(result!=1 || clicks!=2 || fabs(clickedX-285)>0.01 || fabs(clickedY-22.5)>0.01) return 5;
  return 0;
 }
 `

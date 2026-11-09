@@ -5,10 +5,10 @@
   <p>密钥提取 · 播放编排 · 视频解密 · 资源管理</p>
   <p>
     <a href="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml"><img src="https://github.com/hackerlengyue/binggan/actions/workflows/ci.yml/badge.svg" alt="自动构建" /></a>
-    <img src="https://img.shields.io/badge/version-2.0.0-f2b9c7?style=flat-square" alt="版本 2.0.0" />
+    <img src="https://img.shields.io/badge/version-2.0.1-f2b9c7?style=flat-square" alt="版本 2.0.1" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="许可 GPL-3.0" /></a>
-    <img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat-square" alt="Go 1.27.1" />
-    <img src="https://img.shields.io/badge/MyGo-0.2.5-252525?style=flat-square" alt="MyGo 0.2.5" />
+    <img src="https://img.shields.io/badge/Go-1.27.3-00ADD8?style=flat-square" alt="Go 1.27.3" />
+    <img src="https://img.shields.io/badge/MyGo-0.8.3-252525?style=flat-square" alt="MyGo 0.8.3" />
     <img src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square" alt="Vue 3" />
   </p>
   <p><strong>简体中文</strong> · <a href="docs/README.en.md">English</a></p>
@@ -18,6 +18,8 @@
 ---
 
 Binggan 是一款本地视频处理工具。你可以在同一工作区提取和管理密钥、安排课程播放、批量解密 `.sz` 视频，再浏览或播放导出的 MP4。采集记录、任务和设置保存在本地，界面支持简体中文、英文及深浅色主题。
+
+[v2.0.1 更新说明](docs/releases/v2.0.1.md) · [下载最新版本](https://github.com/hackerlengyue/binggan/releases/latest)
 
 ## 预览
 
@@ -30,7 +32,7 @@ Binggan 是一款本地视频处理工具。你可以在同一工作区提取和
 | 工作区 | 能做什么 |
 | --- | --- |
 | 密钥提取 | 启停本地采集、查看请求、保存密钥记录。 |
-| 密钥管理 | 命名、搜索、复制、导出和删除已保存记录。 |
+| 密钥管理 | 手动上传密钥 JSON，命名、搜索、复制、导出和删除已保存记录。 |
 | 播放编排 | 为选中的 Sz课程建立队列，跟踪播放、采集与记录保存。 |
 | 视频解密 | 导入本地 `.sz` 文件和对应密钥 JSON，执行批量任务并导出 MP4。 |
 | 资源管理 | 浏览成片、查看缩略图、内置播放和跳转进度。 |
@@ -57,11 +59,11 @@ macOS 的系统授权、真实播放器完整队列、长时间防息屏、锁�
 
 | 工具 | 版本与用途 |
 | --- | --- |
-| Go | `1.27.1+`，版本下限见 [go.mod](go.mod)，用于编译 MyGo 后端。 |
+| Go | `1.27.3+`，版本下限见 [go.mod](go.mod)，用于编译 MyGo 后端。 |
 | Node.js | `22.12.0+`，版本下限见 [package.json](package.json)，使用随附的 npm 安装依赖并运行前端与开发脚本。 |
 | macOS 编译工具 | Xcode Command Line Tools，提供原生编译所需的 Clang 和系统 SDK。 |
 
-MyGo CLI `0.2.5` 随 `npm ci` 安装。FFmpeg 和 ffprobe 由资源准备命令按平台下载，无需提前全局安装。
+MyGo CLI `0.8.3` 随 `npm ci` 安装。FFmpeg 和 ffprobe 由资源准备命令按平台下载，无需提前全局安装。
 
 **打包 macOS 应用：** 还需 Swift `6.2+` 和兼容 SDK，具体步骤见 [macOS 打包说明](docs/development/README.md#macos)。
 

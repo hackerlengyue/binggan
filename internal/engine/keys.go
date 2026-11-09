@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"howett.net/plist"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,7 +33,10 @@ type Player struct {
 	AppMD5       string `json:"appMd5"`
 }
 
-var KnownPlayers = map[string]string{"MAC_sz_25.12.52": "de31c80fff74af282de314ec43b456d1"}
+var KnownPlayers = map[string]string{
+	"MAC_sz_25.12.52": "de31c80fff74af282de314ec43b456d1",
+	"MAC_sz_26.10.56": "d2901bdda0d5e3f86dddc450bf0fa7f9",
+}
 var hexPattern = regexp.MustCompile(`^[0-9a-fA-F]{32,256}$`)
 
 func HashValid(s string) bool { return len(s) == 32 && hexPattern.MatchString(s) }
@@ -68,7 +72,7 @@ func ReadKey(raw []byte) (Key, error) {
 	return k, k.Validate()
 }
 func (k Key) Validate() error {
-	if len(k.Passwords) == 0 || len(k.Passwords) > 10000 || k.Data == nil {
+	if len(k.Passwords) > 10000 || k.Data == nil {
 		return errors.New("缺少完整的 passwords/getPwdData")
 	}
 	for i, p := range k.Passwords {
@@ -76,17 +80,35 @@ func (k Key) Validate() error {
 		if err != nil || n < 1 || len(p) < 1 || len(p) > 4096 {
 			return errors.New("分段密钥格式无效")
 		}
-	}
-	for _, field := range []string{"den", "pmn"} {
-		v, err := number(k.Data[field])
-		if err != nil || v <= 0 {
-			return fmt.Errorf("%s 必须为正整数", field)
+		if p == "4dbe89a69865bf2adb092e567a1b5b56" || p == "01234567890123456789012345678901" {
+			return errors.New("分段密钥仍为播放器占位符，请重新采集")
 		}
 	}
-	if p := str(k.Data["pattern"]); p != "1" && p != "3" {
-		return errors.New("仅支持 pattern 1 或 3")
+	mode := str(k.Data["pattern"])
+	if mode != "1" && mode != "3" && mode != "<null>" && mode != "4" {
+		return errors.New("仅支持 pattern 1、3、<null> 或 4，不能使用 null 或空模式")
 	}
-	if pick(k.Data, "mima", "mimaPlain", "mima_plain", "mimaEnc", "mima_enc", "password", "pwd", "密码", "firstPassword", "first_password") == "" {
+	if mode == "1" || mode == "3" {
+		if den, err := packetDen(k.Data); err != nil || den <= 0 {
+			return errors.New("whenLong/den 必须为正整数")
+		}
+		pmn, err := number(k.Data["pmn"])
+		if err != nil || pmn <= 0 {
+			return errors.New("pmn 必须为正整数")
+		}
+		if len(k.Passwords) == 0 {
+			return errors.New("缺少完整的 passwords/getPwdData")
+		}
+		if mode == "1" && k.Passwords[strconv.FormatInt(pmn, 10)] == "" {
+			return fmt.Errorf("模式 1 缺少固定第 %d 槽密钥", pmn)
+		}
+	}
+	if mode == "4" {
+		key := pick(k.Data, "mimatuokeqian")
+		if len(key) == 0 || len(key) > 256 || strings.ContainsRune(key, 0) {
+			return errors.New("模式 4 需要有效的 mimatuokeqian 明文密钥")
+		}
+	} else if pick(k.Data, "mima", "mimaPlain", "mima_plain", "mimaEnc", "mima_enc", "password", "pwd", "密码", "firstPassword", "first_password") == "" {
 		return errors.New("缺少 mima 参数")
 	}
 	if v := pick(k.Data, "appMd5", "app_md5"); v != "" && !HashValid(v) {
@@ -254,6 +276,10 @@ func Mima(data map[string]any, appHash string) (string, error) {
 		return "", errors.New("密文 mima 不是有效的 AES/Base64 数据")
 	}
 	for _, cbc := range []bool{false, true} {
+		// The current player is proven ECB. Retain CBC only for older captures.
+		if cbc && pick(data, "softwareName", "softwarename", "software_name") == "MAC_sz_26.10.56" {
+			break
+		}
 		plain := make([]byte, len(ct))
 		if cbc {
 			cipher.NewCBCDecrypter(block, make([]byte, 16)).CryptBlocks(plain, ct)
@@ -270,9 +296,12 @@ func Mima(data map[string]any, appHash string) (string, error) {
 					valid = false
 				}
 			}
-			if valid {
-				plain = plain[:len(plain)-n]
+			if !valid {
+				continue
 			}
+			plain = plain[:len(plain)-n]
+		} else {
+			continue
 		}
 		s := strings.TrimSpace(string(plain))
 		if hexPattern.MatchString(s) {
@@ -311,15 +340,42 @@ func Transform(s string) string {
 	return s
 }
 func segment(pos, den, pmn int64) int64 {
-	v := pos / den
-	if pos%den >= den/2+den%2 {
-		v++
+	// myRound uses sprintf("%.0f"): ties go to the nearest even integer.
+	v := int64(math.RoundToEven((1/float64(den))*float64(pos))) / pmn
+	if v < 0 {
+		v = -v
 	}
-	v = v/pmn + 1
+	v++
 	if v > 180 {
 		v = 180
 	}
 	return v
+}
+
+func packetDen(data map[string]any) (int64, error) {
+	// whenLong is passed as den1 to getPwdData; den is a legacy export alias.
+	return number(pick(data, "whenLong", "den1", "den"))
+}
+
+func sampleKey(k Key, master string, pos int64, size int) ([]byte, error) {
+	switch str(k.Data["pattern"]) {
+	case "4":
+		return []byte(pick(k.Data, "mimatuokeqian")), nil
+	case "<null>":
+		return []byte(master + strconv.Itoa(size)), nil
+	default:
+		den, _ := packetDen(k.Data)
+		pmn, _ := number(k.Data["pmn"])
+		idx := pmn
+		if str(k.Data["pattern"]) == "3" {
+			idx = segment(pos, den, pmn)
+		}
+		pwd, ok := k.Passwords[strconv.FormatInt(idx, 10)]
+		if !ok {
+			return nil, fmt.Errorf("缺少第 %d 段密钥（文件偏移 %d）", idx, pos)
+		}
+		return packetKey(master, pwd, size), nil
+	}
 }
 func packetKey(mima, pwd string, size int) []byte {
 	if len(mima) > 10 {

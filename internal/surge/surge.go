@@ -48,13 +48,84 @@ func commandRunner(path string) runner {
 	return func(ctx context.Context, args ...string) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 		defer cancel()
-		out, err := exec.CommandContext(ctx, path, args...).Output()
-		if err != nil {
-			// CLI diagnostics can contain profile credentials. Never propagate them.
-			return nil, fmt.Errorf("Surge 命令未成功执行（%s），请检查 Surge 是否运行及配置是否有效", args[0])
+		operation, readOnly := surgeCommand(args)
+		attempts := 1
+		if readOnly {
+			attempts = 3
 		}
-		return out, nil
+		for attempt := 1; ; attempt++ {
+			if err := ctx.Err(); err != nil {
+				return nil, fmt.Errorf("Surge 查询已取消或超时（%s）：%w", operation, err)
+			}
+			out, err := exec.CommandContext(ctx, path, args...).Output()
+			if err == nil {
+				return out, nil
+			}
+			if ctx.Err() != nil {
+				return nil, fmt.Errorf("Surge 命令已取消或超时（%s）：%w", operation, ctx.Err())
+			}
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) {
+				return nil, fmt.Errorf("无法启动 Surge 命令（%s）", operation)
+			}
+			if attempt >= attempts || exit.ExitCode() < 0 {
+				// CLI output and arguments can contain profile credentials. Only
+				// fixed operation names and numeric exit codes belong in logs.
+				return nil, fmt.Errorf("Surge 命令未成功执行（%s，退出码 %d，尝试 %d 次），请检查 Surge 是否运行及配置是否有效", operation, exit.ExitCode(), attempt)
+			}
+			// Surge can briefly reject a read immediately after profile reload.
+			// Re-query without repeating any profile/rule mutation, sharing one
+			// timeout across every attempt and the cancellable backoff.
+			timer := time.NewTimer(200 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, fmt.Errorf("Surge 查询已取消或超时（%s）：%w", operation, ctx.Err())
+			case <-timer.C:
+			}
+		}
 	}
+}
+
+func surgeCommand(args []string) (operation string, readOnly bool) {
+	raw := len(args) > 0 && args[0] == "--raw"
+	if raw {
+		args = args[1:]
+	}
+	if len(args) == 0 {
+		return "未知命令", false
+	}
+	switch args[0] {
+	case "mode":
+		return "mode", raw && len(args) == 1
+	case "profile":
+		if len(args) == 2 && args[1] == "current" {
+			return "profile current", raw
+		}
+	case "feature":
+		if len(args) == 3 && args[1] == "get" {
+			return "feature get", raw
+		}
+	case "rule":
+		if len(args) >= 2 && args[1] == "match" {
+			return "rule match", raw
+		}
+		if len(args) >= 3 && args[1] == "temp" {
+			switch args[2] {
+			case "list":
+				return "rule temp list", raw && len(args) == 3
+			case "add":
+				return "rule temp add", false
+			case "remove":
+				return "rule temp remove", false
+			}
+		}
+	case "reload":
+		return "reload", false
+	case "--check":
+		return "配置校验", false
+	}
+	return "未知命令", false
 }
 
 // Active is read-only. A failed controller check must not silently start a

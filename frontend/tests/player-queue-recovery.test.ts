@@ -1067,3 +1067,67 @@ test("ending a task whose detached record was deleted reports loss without trapp
     task.restore();
   }
 });
+
+test("a two-course queue retains one native routing session and preserves record boundaries", async () => {
+  const native = new FakeMyGo().install();
+  const task = queueFixture();
+  task.setSaveFailure(false);
+  task.store.selectedCourses = task.store.availableCourses.slice();
+  const owners: (string | undefined)[] = [];
+  const start = task.trace.startCapture,
+    stop = task.trace.stopCapture;
+  task.trace.startCapture = async (onCreated, owner) => {
+    owners.push(owner);
+    return start(onCreated, owner);
+  };
+  task.trace.stopCapture = async (options) => {
+    assert.equal(
+      native.channels[0]?.closed,
+      false,
+      "routing ended between courses",
+    );
+    assert.equal(options?.routingOwner, "queue-routing-test");
+    return stop(options);
+  };
+  native.handler = async (method, ...args) => {
+    if (method === "NotificationService.Show") return;
+    return native.defaultCall(method, ...args);
+  };
+  try {
+    await task.store.run();
+    assert.equal(task.store.runState, "completed");
+    assert.deepEqual(task.counts(), { clicks: 2, captures: 2 });
+    assert.deepEqual(owners, ["queue-routing-test", "queue-routing-test"]);
+    assert.deepEqual(
+      task.store.courses.map((course) => course.captureId),
+      ["capture-1", "capture-2"],
+    );
+    assert.equal(
+      native.calls.filter(
+        (call) => call.method === "CaptureService.RoutingSession",
+      ).length,
+      1,
+    );
+    assert.equal(native.channels[0]?.closed, true);
+  } finally {
+    task.restore();
+    native.restore();
+  }
+});
+test("a failed course save releases the queue routing session before returning", async () => {
+  const native = new FakeMyGo().install();
+  native.handler = async (method, ...args) =>
+    method === "NotificationService.Show"
+      ? undefined
+      : native.defaultCall(method, ...args);
+  const task = queueFixture();
+  try {
+    await task.store.run();
+    assert.equal(task.store.runState, "paused");
+    assert.ok(task.store.courses[0]?.pendingCapture);
+    assert.equal(native.channels[0]?.closed, true);
+  } finally {
+    task.restore();
+    native.restore();
+  }
+});

@@ -681,6 +681,78 @@ test("database history survives an empty WebView and rename/delete are persisted
   assert.ok(document.deletedCaptureIds.includes(entry.id));
 });
 
+test("manual key imports persist independently of an active capture and retain segment order", async () => {
+  const store = freshStore();
+  await store.initKeyHistory();
+  store.traces = traffic();
+  store.saveCurrentKey();
+  store.captureEnabled = true;
+  await store.flushKeyHistory();
+  const before = readHistoryDocument(mygo.document);
+  const keyJson = buildKeyJson(traffic("imported")).keyJson;
+  keyJson.passwords = { "2": key1, "5": key1, "8": key2 };
+  const imported = await store.importKeyFiles([
+    { name: "手动上传.json", raw: JSON.stringify(keyJson) },
+  ]);
+  assert.equal(imported[0]?.source, "upload");
+  assert.equal(imported[0]?.name, "手动上传");
+  assert.deepEqual(imported[0]?.keyJson, keyJson);
+  const after = readHistoryDocument(mygo.document);
+  assert.deepEqual(after.currentCapture, before.currentCapture);
+  assert.deepEqual(after.deletedCaptureIds, before.deletedCaptureIds);
+  assert.deepEqual(after.retiredCaptureIds, before.retiredCaptureIds);
+  assert.equal(store.currentHistoryId, "metadata-one");
+  assert.equal(store.total, 2);
+  assert.equal(store.captureEnabled, true);
+  localStorage.clear();
+  const restored = freshStore();
+  await restored.initKeyHistory();
+  assert.deepEqual(
+    restored.keyHistory.find((entry) => entry.id === imported[0]?.id),
+    imported[0],
+  );
+});
+
+test("an invalid file rejects the entire import batch without changing saved history", async () => {
+  const store = freshStore();
+  await store.initKeyHistory();
+  const before = mygo.document;
+  await assert.rejects(
+    store.importKeyFiles([
+      {
+        name: "valid.json",
+        raw: JSON.stringify(buildKeyJson(traffic()).keyJson),
+      },
+      { name: "invalid.json", raw: "{}" },
+    ]),
+  );
+  assert.equal(mygo.document, before);
+  assert.equal(store.keyHistory.length, 0);
+  assert.ok(!mygo.methods().includes("WorkspaceService.SaveKeyHistory"));
+});
+
+test("retrying an import after a failed database write does not duplicate the key", async () => {
+  const store = freshStore();
+  await store.initKeyHistory();
+  const files = [
+    { name: "课程.json", raw: JSON.stringify(buildKeyJson(traffic()).keyJson) },
+  ];
+  mygo.handler = async (method, ...args) => {
+    if (method === "WorkspaceService.SaveKeyHistory")
+      throw new Error("database unavailable");
+    return mygo.defaultCall(method, ...args);
+  };
+  await assert.rejects(store.importKeyFiles(files), /未写入数据库/);
+  assert.equal(store.keyHistory.length, 1);
+  const pendingId = store.keyHistory[0]!.id;
+  assert.equal(readKeyHistory(mygo.document).length, 0);
+  mygo.handler = null;
+  const imported = await store.importKeyFiles(files);
+  assert.equal(store.keyHistory.length, 1);
+  assert.equal(imported[0]?.id, pendingId);
+  assert.equal(readKeyHistory(mygo.document)[0]?.id, pendingId);
+});
+
 test("a fresh workspace loads an empty database instead of cached records", async () => {
   const entry = makeHistoryEntry(buildKeyJson(traffic()), traffic(), null)!;
   localStorage.setItem(

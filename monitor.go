@@ -41,6 +41,9 @@ type Monitor struct {
 	config           capture.Config
 	dir              string
 	lock             *flock.Flock
+	routingHeld      string
+	routingRetained  bool
+	captureRequested bool
 	lease            captureLease
 	startTunnel      func(context.Context, capture.Descriptor, *capture.Logbook) (captureLease, error)
 	instance         string
@@ -157,6 +160,7 @@ func (a *Monitor) stopLease() error {
 	e := a.lease.Stop()
 	if e == nil {
 		a.lease = nil
+		a.routingRetained = false
 	}
 	return e
 }
@@ -306,34 +310,6 @@ func (a *Monitor) signal() {
 	}
 }
 
-func (a *Monitor) setCaptureRouting(ctx context.Context, enabled bool) error {
-	a.op.Lock()
-	defer a.op.Unlock()
-	if enabled {
-		if a.closed || a.ctx == nil || a.client == nil || a.logs == nil {
-			return fmt.Errorf("流量接管尚未就绪，请稍后重试")
-		}
-		a.sync()
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if state := a.GetState(); state.Stage == "error" || state.Stage == "certificate" || state.Stage == "trust" {
-			return fmt.Errorf("%s", state.Message)
-		}
-	}
-	if a.lease == nil {
-		if !enabled {
-			return nil
-		}
-		return fmt.Errorf("流量接管尚未就绪，请稍后重试")
-	}
-	if routing, ok := a.lease.(interface {
-		SetCaptureEnabled(context.Context, bool) error
-	}); ok {
-		return routing.SetCaptureEnabled(ctx, enabled)
-	}
-	return nil
-}
 func (a *Monitor) GetState() State {
 	a.mu.RLock()
 	s := a.state

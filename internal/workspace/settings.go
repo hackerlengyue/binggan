@@ -10,10 +10,10 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 	"time.haomen/binggan/v2/internal/engine"
 	"time.haomen/binggan/v2/internal/procutil"
 	"time.haomen/binggan/v2/internal/store"
-	"time"
 	"unicode/utf8"
 )
 
@@ -193,6 +193,10 @@ func (a *App) Diagnose(parent context.Context) (Diagnosis, error) {
 	return Diagnosis{store.Now(), runtime.Version(), player, engine.KnownPlayers, checks, engine.HashValid(a.Config.AppMD5)}, nil
 }
 func (a *App) keyHash(k engine.Key) (string, error) {
+	// Direct RC4 mode never unwraps an AES password.
+	if k.Data["pattern"] == "4" {
+		return "", nil
+	}
 	s, err := a.Settings()
 	if err != nil {
 		return "", err

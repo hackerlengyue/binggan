@@ -363,6 +363,13 @@ export const CaptureService = {
   retry(): Promise<void> {
     return call("CaptureService.Retry");
   },
+  /**
+   * RoutingSession retains forwarding across the queue's separate capture files.
+   * Channel cancellation also covers a lost/reloaded renderer.
+   */
+  routingSession(ready: Channel<string>): Promise<void> {
+    return call("CaptureService.RoutingSession", ready);
+  },
   state(): Promise<State> {
     return call("CaptureService.State");
   },
@@ -457,8 +464,8 @@ export const WorkspaceService = {
   clearLogs(scope: string): Promise<number> {
     return call("WorkspaceService.ClearLogs", scope);
   },
-  clearTraces(clientID: string): Promise<void> {
-    return call("WorkspaceService.ClearTraces", clientID);
+  clearTraces(clientID: string, routingOwner: string): Promise<void> {
+    return call("WorkspaceService.ClearTraces", clientID, routingOwner);
   },
   connection(): Promise<ConnectionStatus> {
     return call("WorkspaceService.Connection");
@@ -520,8 +527,8 @@ export const WorkspaceService = {
   saveSettings(input: PlayerSettings): Promise<PlayerSettings> {
     return call("WorkspaceService.SaveSettings", input);
   },
-  setCaptureState(enabled: boolean): Promise<boolean> {
-    return call("WorkspaceService.SetCaptureState", enabled);
+  setCaptureState(enabled: boolean, routingOwner: string): Promise<boolean> {
+    return call("WorkspaceService.SetCaptureState", enabled, routingOwner);
   },
   settings(): Promise<PlayerSettings> {
     return call("WorkspaceService.Settings");

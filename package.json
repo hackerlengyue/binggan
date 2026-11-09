@@ -14,9 +14,9 @@
     "check:repository": "node scripts/check-repository.mjs"
   },
   "devDependencies": {
-    "mygo-cli": "0.2.5"
+    "mygo-cli": "0.8.3"
   },
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Binggan desktop workspace for capture, local video processing, and media management",
   "engines": {
     "node": ">=22.12.0"

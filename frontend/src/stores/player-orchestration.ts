@@ -33,6 +33,10 @@ import {
   type ExecutionLogMeta,
 } from "@/lib/orchestration-log";
 import { desktopNotifications } from "@/lib/notifications";
+import {
+  retainQueueRouting,
+  type QueueRoutingSession,
+} from "@/lib/queue-routing";
 
 const STORAGE_KEY = "szjm.player-orchestration.v1";
 const MAX_LOGS = 500;
@@ -240,6 +244,8 @@ export const usePlayerOrchestrationStore = defineStore(
     const courseError = ref("");
     const manualComplete = ref(false);
     const startingRun = ref(false);
+    const releasingRouting = ref(false);
+    let routingSession: QueueRoutingSession | undefined;
     let controller: AbortController | undefined;
     let runFinished: Promise<void> | undefined;
     let finishRun: (() => void) | undefined;
@@ -280,7 +286,7 @@ export const usePlayerOrchestrationStore = defineStore(
     const receiverConnected = computed(() => trace.connected);
     const historyReady = computed(() => trace.historyReady);
     const operationBusy = computed(
-      () => startingRun.value || transitioning.value,
+      () => startingRun.value || transitioning.value || releasingRouting.value,
     );
     const canEditSelection = computed(
       () =>
@@ -304,8 +310,7 @@ export const usePlayerOrchestrationStore = defineStore(
     });
     const canStart = computed(
       () =>
-        !startingRun.value &&
-        !transitioning.value &&
+        !operationBusy.value &&
         !controller &&
         !courseLoading.value &&
         ((runState.value === "idle" && canContinueSelection.value) ||
@@ -746,7 +751,7 @@ export const usePlayerOrchestrationStore = defineStore(
               ownedCaptureId = id;
               if (activeCourse.value) activeCourse.value.captureId = id;
               requirePersistedQueue();
-            });
+            }, routingSession?.owner);
           } finally {
             if (
               trace.currentHistoryId &&
@@ -776,7 +781,10 @@ export const usePlayerOrchestrationStore = defineStore(
         },
         stopCapture: async () => {
           requireOwnedCapture();
-          const entry = await trace.stopCapture({ deferReset: true });
+          const entry = await trace.stopCapture({
+            deferReset: true,
+            routingOwner: routingSession?.owner,
+          });
           if (entry && entry.id !== ownedCaptureId)
             throw new Error("停止提取返回了其他记录，不会替换本课记录");
           return (
@@ -811,6 +819,7 @@ export const usePlayerOrchestrationStore = defineStore(
         ),
         manualComplete: () => manualComplete.value,
         checkpoint: async (signal: AbortSignal) => {
+          routingSession?.assertConnected();
           if (signal.aborted) throw new OrchestrationInterrupted();
           if (queuePersistenceError) requirePersistedQueue();
           if (pauseRequested && playbackMayBeActive()) {
@@ -827,7 +836,7 @@ export const usePlayerOrchestrationStore = defineStore(
             requireOwnedCapture();
             capturePausedForTask = true;
             try {
-              await trace.pauseCapture();
+              await trace.pauseCapture(routingSession?.owner);
             } catch (error) {
               capturePausedForTask = false;
               throw error;
@@ -848,6 +857,7 @@ export const usePlayerOrchestrationStore = defineStore(
             }
           }
           if (signal.aborted) throw new OrchestrationInterrupted();
+          routingSession?.assertConnected();
         },
         recoverPlayback,
         onProgress: (playback: PlaybackProgress) => {
@@ -967,6 +977,7 @@ export const usePlayerOrchestrationStore = defineStore(
           throw new Error(
             "密钥历史尚未就绪或已有其他提取任务，暂时无法重试保存",
           );
+        routingSession = await retainQueueRouting();
         controller = new AbortController();
         unblockPause();
         appendLog("info", "运行条件检查通过");
@@ -976,254 +987,273 @@ export const usePlayerOrchestrationStore = defineStore(
       } finally {
         startingRun.value = false;
       }
-      if (newQueue) {
-        courses.value = plannedCourses;
-        runConfig = plannedConfig;
-        currentIndex.value = 0;
-      }
-      runFinished = new Promise<void>((resolve) => {
-        finishRun = resolve;
-      });
-      stopRequested = false;
-      endNeedsAttention = false;
-      capturePausedForTask = false;
-      playbackPausedForTask = false;
-      playbackClickDelivered = false;
-      playbackClickInFlight = undefined;
-      runState.value = "running";
-      statusError.value = "";
-      appendLog(
-        "info",
-        `开始执行课程队列，共 ${courses.value.length} 门`,
-        `音量 ${(runConfig ?? config).playbackVolumePercent}% · 倍速 ${(runConfig ?? config).playbackRate ?? "保持当前"} · 检查间隔 ${(runConfig ?? config).pollIntervalMs}ms`,
-      );
-      notify(
-        continuing
-          ? desktopNotifications.playerResumed(
-              processedCount.value,
-              courses.value.length,
-            )
-          : desktopNotifications.playerStarted(courses.value.length),
-      );
-
-      const precheckedIndex = currentIndex.value;
-      while (
-        currentIndex.value < courses.value.length &&
-        !controller.signal.aborted &&
-        !stopRequested
-      ) {
-        const course = courses.value[currentIndex.value]!;
-        if (course.state === "completed") {
-          currentIndex.value++;
-          continue;
+      try {
+        if (newQueue) {
+          courses.value = plannedCourses;
+          runConfig = plannedConfig;
+          currentIndex.value = 0;
         }
-        course.state = "running";
-        course.playbackAttempted ??= false;
-        course.detail = undefined;
-        if (!course.pendingCapture) course.playback = undefined;
-        course.failedAt = undefined;
-        manualComplete.value = false;
+        runFinished = new Promise<void>((resolve) => {
+          finishRun = resolve;
+        });
+        stopRequested = false;
+        endNeedsAttention = false;
+        capturePausedForTask = false;
+        playbackPausedForTask = false;
         playbackClickDelivered = false;
+        playbackClickInFlight = undefined;
+        runState.value = "running";
+        statusError.value = "";
         appendLog(
           "info",
-          `开始处理第 ${currentIndex.value + 1} / ${courses.value.length} 节课程`,
-          `课程：${course.name}
-音量：${(runConfig ?? config).playbackVolumePercent}%
-倍速：${(runConfig ?? config).playbackRate ?? "保持当前"}`,
+          `开始执行课程队列，共 ${courses.value.length} 门`,
+          `音量 ${(runConfig ?? config).playbackVolumePercent}% · 倍速 ${(runConfig ?? config).playbackRate ?? "保持当前"} · 检查间隔 ${(runConfig ?? config).pollIntervalMs}ms`,
         );
-        persist();
-        const courseStartedAt = performance.now();
-        automaticRecoveryAttempts = 0;
-        recoveryRequest = undefined;
-        ownedCaptureId = undefined;
-        playbackPid = undefined;
-        playbackStartedForCourse = false;
-        playbackContinuedForCourse = false;
-        playbackPauseFailure = undefined;
-        try {
-          let entry: { id: string };
-          if (course.pendingCapture) {
-            setCurrentStep("savingCapture");
-            let pending = course.pendingCapture;
-            if (
-              pending.needsStop &&
-              (archivedCapture(pending.id) || storedPartialCapture(pending))
-            ) {
-              pending = { ...pending, needsStop: false };
-              course.pendingCapture = pending;
-              persist();
-            }
-            if (pending.needsStop) {
-              setCurrentStep("stoppingCapture");
-              if (!pending.id || trace.currentHistoryId !== pending.id)
-                throw new Error(
-                  "待收尾的提取记录与当前记录不一致，请先在密钥管理确认；不会重新播放课程",
-                );
-              const stopped = await trace.stopCapture({ deferReset: true });
-              if (!stopped || stopped.id !== pending.id)
-                throw new Error("没有取得当前课程的提取记录，已保留待收尾状态");
-              pending = { ...pending, id: stopped.id, needsStop: false };
-              course.pendingCapture = pending;
-              persist();
-            }
-            setCurrentStep("savingCapture");
-            appendLog(
-              "info",
-              pending.playbackCompleted === false
-                ? "重试保存中断记录，不重新播放"
-                : "重试保存已完成课程，不重新播放",
-              undefined,
-              course.name,
-            );
-            const savingAt = performance.now();
-            await dependencies().saveCapture(pending, pending.name);
-            const saved = trace.keyHistory.find(
-              (item) => item.id === pending.id,
-            );
-            appendLog(
-              saved?.valid === false ? "warn" : "info",
-              "提取记录已保存",
-              captureResultDetail({
-                name: pending.name,
-                valid: saved?.valid,
-                issues: saved?.issues,
-                requestCount: saved?.traces?.length,
-              }),
-              course.name,
-              { elapsedMs: performance.now() - savingAt },
-            );
-            if (pending.playbackCompleted === false) {
-              course.pendingCapture = undefined;
-              course.captureId = pending.id;
-              course.state = "ended";
-              course.detail = "中断记录已保存，当前课程未播放完成";
-              runState.value = "ended";
-              currentStep.value = undefined;
-              appendLog("warn", course.detail);
-              controller = undefined;
-              unblockPause();
-              persist();
-              finishRun?.();
-              return;
-            }
-            entry = pending;
-          } else {
-            if (!firstNeedsPlayback || currentIndex.value !== precheckedIndex)
-              await checkRunRequirements();
-            if (controller.signal.aborted) throw new OrchestrationInterrupted();
-            entry = await executeCourse(
-              {
-                ...dependencies(),
-                onLog: (level, message, detail, metadata) =>
-                  appendLog(level, message, detail, course.name, metadata),
-              },
-              { ...(runConfig ?? config) },
-              course,
-              controller.signal,
-            );
+        notify(
+          continuing
+            ? desktopNotifications.playerResumed(
+                processedCount.value,
+                courses.value.length,
+              )
+            : desktopNotifications.playerStarted(courses.value.length),
+        );
+
+        const precheckedIndex = currentIndex.value;
+        while (
+          currentIndex.value < courses.value.length &&
+          !controller.signal.aborted &&
+          !stopRequested
+        ) {
+          const course = courses.value[currentIndex.value]!;
+          if (course.state === "completed") {
+            currentIndex.value++;
+            continue;
           }
-          if (playbackPausePending) await playbackPausePending;
-          // Pause flags belong to the media/capture just finalized. A manual
-          // completion must not suppress pausing the next course.
-          playbackPausedForTask = false;
-          capturePausedForTask = false;
-          course.pendingCapture = undefined;
-          course.state = "completed";
-          course.captureId = entry.id;
+          course.state = "running";
+          course.playbackAttempted ??= false;
+          course.detail = undefined;
+          if (!course.pendingCapture) course.playback = undefined;
+          course.failedAt = undefined;
+          manualComplete.value = false;
+          playbackClickDelivered = false;
           appendLog(
             "info",
-            "本课程执行完成",
-            currentIndex.value + 1 < courses.value.length
-              ? `下一课：${courses.value[currentIndex.value + 1]!.name}`
-              : "队列中的全部课程已处理完成",
-            course.name,
-            { elapsedMs: performance.now() - courseStartedAt },
+            `开始处理第 ${currentIndex.value + 1} / ${courses.value.length} 节课程`,
+            `课程：${course.name}
+音量：${(runConfig ?? config).playbackVolumePercent}%
+倍速：${(runConfig ?? config).playbackRate ?? "保持当前"}`,
           );
-          currentIndex.value++;
-          currentStep.value = undefined;
           persist();
-          notify(
-            desktopNotifications.playerCourseSaved(
-              currentIndex.value,
-              courses.value.length,
-            ),
-          );
-        } catch (error) {
-          if (error instanceof CaptureSaveFailed)
-            course.pendingCapture = {
-              id: error.entry.id,
-              name: error.captureName,
-            };
-          const interrupted = error instanceof OrchestrationInterrupted;
-          if (
-            stopRequested &&
-            (!interrupted ||
-              (error instanceof OrchestrationInterrupted &&
-                error.cleanupFailed))
-          )
-            endNeedsAttention = true;
-          course.state = interrupted
-            ? stopRequested
-              ? "ended"
-              : "pending"
-            : "error";
-          course.detail = errorMessage(error);
-          course.failedAt = new Date().toISOString();
-          runState.value = stopRequested ? "ended" : "paused";
-          appendLog(
-            interrupted ? "warn" : "error",
-            interrupted
-              ? stopRequested
-                ? "任务已结束"
-                : "队列已暂停"
-              : "课程执行失败，队列已停止推进",
-            [
-              course.detail,
-              course.playback
-                ? `最近进度：${formatPlaybackProgress(course.playback)}`
-                : undefined,
-              course.pendingCapture
-                ? course.pendingCapture.playbackCompleted === false
-                  ? "课程已中断，记录尚未保存成功，可重试保存"
-                  : "播放已完成，记录尚未保存成功，可重试保存"
-                : undefined,
-            ]
-              .filter(Boolean)
-              .join("\n"),
-            course.name,
-          );
-          currentStep.value = undefined;
-          persist();
-          controller = undefined;
-          unblockPause();
-          finishRun?.();
-          if (!interrupted && !stopRequested)
+          const courseStartedAt = performance.now();
+          automaticRecoveryAttempts = 0;
+          recoveryRequest = undefined;
+          ownedCaptureId = undefined;
+          playbackPid = undefined;
+          playbackStartedForCourse = false;
+          playbackContinuedForCourse = false;
+          playbackPauseFailure = undefined;
+          try {
+            let entry: { id: string };
+            if (course.pendingCapture) {
+              setCurrentStep("savingCapture");
+              let pending = course.pendingCapture;
+              if (
+                pending.needsStop &&
+                (archivedCapture(pending.id) || storedPartialCapture(pending))
+              ) {
+                pending = { ...pending, needsStop: false };
+                course.pendingCapture = pending;
+                persist();
+              }
+              if (pending.needsStop) {
+                setCurrentStep("stoppingCapture");
+                if (!pending.id || trace.currentHistoryId !== pending.id)
+                  throw new Error(
+                    "待收尾的提取记录与当前记录不一致，请先在密钥管理确认；不会重新播放课程",
+                  );
+                const stopped = await trace.stopCapture({
+                  deferReset: true,
+                  routingOwner: routingSession?.owner,
+                });
+                if (!stopped || stopped.id !== pending.id)
+                  throw new Error(
+                    "没有取得当前课程的提取记录，已保留待收尾状态",
+                  );
+                pending = { ...pending, id: stopped.id, needsStop: false };
+                course.pendingCapture = pending;
+                persist();
+              }
+              setCurrentStep("savingCapture");
+              appendLog(
+                "info",
+                pending.playbackCompleted === false
+                  ? "重试保存中断记录，不重新播放"
+                  : "重试保存已完成课程，不重新播放",
+                undefined,
+                course.name,
+              );
+              const savingAt = performance.now();
+              await dependencies().saveCapture(pending, pending.name);
+              const saved = trace.keyHistory.find(
+                (item) => item.id === pending.id,
+              );
+              appendLog(
+                saved?.valid === false ? "warn" : "info",
+                "提取记录已保存",
+                captureResultDetail({
+                  name: pending.name,
+                  valid: saved?.valid,
+                  issues: saved?.issues,
+                  requestCount: saved?.traces?.length,
+                }),
+                course.name,
+                { elapsedMs: performance.now() - savingAt },
+              );
+              if (pending.playbackCompleted === false) {
+                course.pendingCapture = undefined;
+                course.captureId = pending.id;
+                course.state = "ended";
+                course.detail = "中断记录已保存，当前课程未播放完成";
+                runState.value = "ended";
+                currentStep.value = undefined;
+                appendLog("warn", course.detail);
+                controller = undefined;
+                unblockPause();
+                persist();
+                return;
+              }
+              entry = pending;
+            } else {
+              if (!firstNeedsPlayback || currentIndex.value !== precheckedIndex)
+                await checkRunRequirements();
+              if (controller.signal.aborted)
+                throw new OrchestrationInterrupted();
+              entry = await executeCourse(
+                {
+                  ...dependencies(),
+                  onLog: (level, message, detail, metadata) =>
+                    appendLog(level, message, detail, course.name, metadata),
+                },
+                { ...(runConfig ?? config) },
+                course,
+                controller.signal,
+              );
+            }
+            if (playbackPausePending) await playbackPausePending;
+            // Pause flags belong to the media/capture just finalized. A manual
+            // completion must not suppress pausing the next course.
+            playbackPausedForTask = false;
+            capturePausedForTask = false;
+            course.pendingCapture = undefined;
+            course.state = "completed";
+            course.captureId = entry.id;
+            appendLog(
+              "info",
+              "本课程执行完成",
+              currentIndex.value + 1 < courses.value.length
+                ? `下一课：${courses.value[currentIndex.value + 1]!.name}`
+                : "队列中的全部课程已处理完成",
+              course.name,
+              { elapsedMs: performance.now() - courseStartedAt },
+            );
+            currentIndex.value++;
+            currentStep.value = undefined;
+            persist();
             notify(
-              desktopNotifications.playerAttention(
-                processedCount.value,
+              desktopNotifications.playerCourseSaved(
+                currentIndex.value,
                 courses.value.length,
               ),
             );
-          return;
+          } catch (error) {
+            if (error instanceof CaptureSaveFailed)
+              course.pendingCapture = {
+                id: error.entry.id,
+                name: error.captureName,
+              };
+            const interrupted = error instanceof OrchestrationInterrupted;
+            if (
+              stopRequested &&
+              (!interrupted ||
+                (error instanceof OrchestrationInterrupted &&
+                  error.cleanupFailed))
+            )
+              endNeedsAttention = true;
+            course.state = interrupted
+              ? stopRequested
+                ? "ended"
+                : "pending"
+              : "error";
+            course.detail = errorMessage(error);
+            course.failedAt = new Date().toISOString();
+            runState.value = stopRequested ? "ended" : "paused";
+            appendLog(
+              interrupted ? "warn" : "error",
+              interrupted
+                ? stopRequested
+                  ? "任务已结束"
+                  : "队列已暂停"
+                : "课程执行失败，队列已停止推进",
+              [
+                course.detail,
+                course.playback
+                  ? `最近进度：${formatPlaybackProgress(course.playback)}`
+                  : undefined,
+                course.pendingCapture
+                  ? course.pendingCapture.playbackCompleted === false
+                    ? "课程已中断，记录尚未保存成功，可重试保存"
+                    : "播放已完成，记录尚未保存成功，可重试保存"
+                  : undefined,
+              ]
+                .filter(Boolean)
+                .join("\n"),
+              course.name,
+            );
+            currentStep.value = undefined;
+            persist();
+            controller = undefined;
+            unblockPause();
+            if (!interrupted && !stopRequested)
+              notify(
+                desktopNotifications.playerAttention(
+                  processedCount.value,
+                  courses.value.length,
+                ),
+              );
+            return;
+          }
+        }
+        if (currentIndex.value >= courses.value.length) {
+          runState.value = "completed";
+          currentStep.value = undefined;
+          appendLog(
+            "info",
+            "任务已完成，全部课程已播放并保存",
+            undefined,
+            undefined,
+          );
+          persist();
+          notify(desktopNotifications.playerCompleted(courses.value.length));
+        } else {
+          runState.value = "paused";
+        }
+        persist();
+        controller = undefined;
+      } finally {
+        releasingRouting.value = true;
+        const routing = routingSession;
+        routingSession = undefined;
+        try {
+          await routing?.release();
+        } catch (error) {
+          endNeedsAttention = true;
+          appendLog("error", "队列分流连接释放失败", errorMessage(error));
+          throw error;
+        } finally {
+          releasingRouting.value = false;
+          finishRun?.();
         }
       }
-      if (currentIndex.value >= courses.value.length) {
-        runState.value = "completed";
-        currentStep.value = undefined;
-        appendLog(
-          "info",
-          "任务已完成，全部课程已播放并保存",
-          undefined,
-          undefined,
-        );
-        persist();
-        notify(desktopNotifications.playerCompleted(courses.value.length));
-      } else {
-        runState.value = "paused";
-      }
-      persist();
-      controller = undefined;
-      finishRun?.();
     }
 
     function unblockPause() {
@@ -1338,7 +1368,7 @@ export const usePlayerOrchestrationStore = defineStore(
         if (trace.captureEnabled) {
           requireOwnedCapture();
           capturePausedForTask = true;
-          await trace.pauseCapture();
+          await trace.pauseCapture(routingSession?.owner);
         }
         if (playbackActive) {
           try {
@@ -1492,7 +1522,7 @@ export const usePlayerOrchestrationStore = defineStore(
         resumingStarted = true;
         if (playbackPausePending) await playbackPausePending;
         if (capturePausedForTask) {
-          await trace.resumeCapture();
+          await trace.resumeCapture(routingSession?.owner);
           capturePausedForTask = false;
         }
         if (playbackPausedForTask) {
