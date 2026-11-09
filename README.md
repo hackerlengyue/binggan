@@ -19,8 +19,6 @@
 
 Binggan 是一款本地视频处理工具。你可以在同一工作区提取和管理密钥、安排课程播放、批量解密 `.sz` 视频，再浏览或播放导出的 MP4。采集记录、任务和设置保存在本地，界面支持简体中文、英文及深浅色主题。
 
-[v2.0.1 更新说明](docs/releases/v2.0.1.md) · [下载最新版本](https://github.com/hackerlengyue/binggan/releases/latest)
-
 ## 预览
 
 ![数据概览](docs/assets/overview.png)

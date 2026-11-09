@@ -2,8 +2,6 @@
 
 [项目首页](../README.md) · [English README](README.en.md)
 
-[v2.0.1 更新说明 / Release notes](releases/v2.0.1.md)
-
 ## 开发 / Development
 
 | 内容 / Topic | 简体中文 | English |

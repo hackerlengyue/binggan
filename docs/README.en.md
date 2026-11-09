@@ -19,8 +19,6 @@
 
 Binggan is a desktop tool for local video processing. Capture and manage keys, queue lessons, decrypt `.sz` files in batches, and browse or play the exported MP4s in one workspace. Capture records, tasks, and settings are stored locally. The interface supports Simplified Chinese, English, and light and dark themes.
 
-[v2.0.1 release notes](releases/v2.0.1.md#english) · [Download the latest release](https://github.com/hackerlengyue/binggan/releases/latest)
-
 ## Preview
 
 ![Data overview](assets/overview.png)
