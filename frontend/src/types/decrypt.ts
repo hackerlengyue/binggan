@@ -35,7 +35,9 @@ export interface DecryptTask {
   children: DecryptJob[];
 }
 export const stageLabels: Record<string, string> = {
+  derive: "密钥派生",
   decrypt: "解密视频",
+  remux: "MP4 封装",
   scan: "音频检查",
   restore: "声音还原",
   validate: "最终校验",
@@ -84,7 +86,9 @@ export function taskProgress(task: DecryptTask): number {
     if (job.status === "completed" || job.status === "failed") return sum + 1;
     if (job.status !== "running") return sum;
     if (job.progress?.stage === "complete") return sum + 0.99;
-    const index = Math.max(0, stages.indexOf(job.progress?.stage || "decrypt"));
+    const stage = job.progress?.stage || "decrypt";
+    if (stage === "derive") return sum;
+    const index = stage === "remux" ? 1 : Math.max(0, stages.indexOf(stage));
     const fraction = job.progress?.total
       ? Math.min(1, job.progress.done / job.progress.total)
       : 0;

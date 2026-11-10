@@ -128,7 +128,12 @@ export function isKeyJsonPayload(value: unknown): value is KeyJsonPayload {
     data.den >= 0 &&
     Number.isFinite(data.pmn) &&
     data.pmn >= 0 &&
-    ["", "1", "3", "4", "<null>"].includes(data.pattern) &&
+    ["", "1", "3", "4", "<null>", "szpd"].includes(data.pattern) &&
+    (data.aesKey === undefined || typeof data.aesKey === "string") &&
+    (data.aesIV === undefined || typeof data.aesIV === "string") &&
+    (data.derivation === undefined || typeof data.derivation === "string") &&
+    (data.fileName === undefined || typeof data.fileName === "string") &&
+    (data.fileNameHex === undefined || typeof data.fileNameHex === "string") &&
     (data.mimatuokeqian === undefined ||
       typeof data.mimatuokeqian === "string") &&
     Number.isFinite(data.whenLong) &&

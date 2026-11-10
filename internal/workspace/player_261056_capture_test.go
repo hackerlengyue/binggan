@@ -25,6 +25,23 @@ import (
 // Exercise the real sing-box SOCKS outbound, authenticated relay, TLS MITM and
 // durable collector together. No TUN is started and no system routes change.
 func TestPlayer261056SingboxCaptureToHistory(t *testing.T) {
+	testSingboxCaptureToHistory(t, "MAC_sz_26.10.56", map[string]string{
+		"/api/courseLocal/getPerinutePwd": `{"data":{"pwdMaps":{"第一个密码":{"密码":"synthetic-aes-cipher"}},"pattern":"3","pmn":2,"whenLong":10}}`,
+		"/api/courseLocal/getPwd3V2":      `{"data":{"pwd":"abcdef0123456789abcdef0123456789"}}`,
+	})
+}
+
+func TestWindows2610553SingboxCaptureToHistory(t *testing.T) {
+	// The report does not establish the actual softwareName literal. This label
+	// is deliberately synthetic; preserve it as supplied rather than inventing one.
+	testSingboxCaptureToHistory(t, "synthetic-windows-26.10.553", map[string]string{
+		"/api/courseLocal/getPerinutePwd": `{"code":"0000","data":{"pwd_Audio":"synthetic-audio","Audio_start":0}}`,
+		"/api/courseLocal/getPwd3V2":      `{"code":"0000","data":{"pwd":"12345678"}}`,
+	})
+}
+
+func testSingboxCaptureToHistory(t *testing.T, softwareName string, bodies map[string]string) {
+	t.Helper()
 	app := testApp(t)
 	app.collector.mu.Lock()
 	err := app.collector.startLocked(0)
@@ -33,12 +50,8 @@ func TestPlayer261056SingboxCaptureToHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	app.SetCaptureState(true)
-	bodies := map[string]string{
-		"/api/courseLocal/getPerinutePwd": `{"data":{"pwdMaps":{"第一个密码":{"密码":"synthetic-aes-cipher"}},"pattern":"3","pmn":2,"whenLong":10}}`,
-		"/api/courseLocal/getPwd3V2":      `{"data":{"pwd":"abcdef0123456789abcdef0123456789"}}`,
-	}
 	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("SoftwareName") != "MAC_sz_26.10.56" || r.Header.Get("CurrentToken") != "synthetic-token" {
+		if r.Header.Get("SoftwareName") != softwareName || r.Header.Get("CurrentToken") != "synthetic-token" {
 			t.Error("player headers changed before upstream")
 		}
 		w.Header().Set("Content-Encoding", "br")
@@ -108,7 +121,7 @@ func TestPlayer261056SingboxCaptureToHistory(t *testing.T) {
 			t.Fatal(err)
 		}
 		req.Close = true
-		req.Header.Set("SoftwareName", "MAC_sz_26.10.56")
+		req.Header.Set("SoftwareName", softwareName)
 		req.Header.Set("CurrentToken", "synthetic-token")
 		req.Header.Set("Uit", []string{"synthetic-uit-one", "synthetic-uit-two"}[i])
 		if err = req.Write(secure); err != nil {
@@ -155,7 +168,7 @@ func TestPlayer261056SingboxCaptureToHistory(t *testing.T) {
 			t.Fatal("invalid durable event")
 		}
 		pairs[event.RequestID] = append(pairs[event.RequestID], event)
-		if event.Phase == "request" && (event.Headers["Softwarename"] != "MAC_sz_26.10.56" || event.Headers["Uit"] == "" || event.Headers["Currenttoken"] != "synthetic-token") {
+		if event.Phase == "request" && (event.Headers["Softwarename"] != softwareName || event.Headers["Uit"] == "" || event.Headers["Currenttoken"] != "synthetic-token") {
 			t.Fatal("required capture headers missing")
 		}
 		if event.Phase == "response" {

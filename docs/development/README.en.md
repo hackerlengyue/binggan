@@ -123,6 +123,8 @@ The script uses local ad-hoc signing. Public distribution needs Developer ID sig
 
 Windows startup, WebView2, certificates, capture, and exports have not been tested. GitHub Actions provides x64 and ARM64 builds; the commands below build locally. Native playback orchestration is currently implemented only on macOS.
 
+The implementation includes `MainPlayer.exe` routing, current-user certificate management, and SZPD 582 decryption with explicit AES parameters or opt-in experimental filename derivation. See the [Windows SZPlayer guide (Chinese)](szplayer-windows-26.10.553.md) for evidence limits and manual validation. Windows x64 CI runs adaptation tests without starting a TUN or changing certificate trust.
+
 ```sh
 npm run prepare:resources -- --platform windows-amd64
 npm run prepare:resources -- --platform windows-arm64

@@ -25,7 +25,7 @@ func Run(ctx context.Context, input, output string, k Key, appHash string, log L
 	stage := "prepare"
 	timings := make(map[string]float64)
 	defer func() {
-		if err != nil {
+		if err != nil && stage != "" {
 			err = fmt.Errorf("%s失败：%w", StageName(stage), err)
 		}
 	}()
@@ -50,6 +50,13 @@ func Run(ctx context.Context, input, output string, k Key, appHash string, log L
 	}
 	if err := k.Validate(); err != nil {
 		return nil, err
+	}
+	if err := ValidateInputKey(input, k); err != nil {
+		return nil, err
+	}
+	if k.IsSZPD() {
+		stage = ""
+		return runSZPD(ctx, input, output, k, log, progress)
 	}
 	mima := ""
 	if str(k.Data["pattern"]) != "4" {

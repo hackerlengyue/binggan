@@ -123,6 +123,8 @@ SDK 优先使用开发工具目录中已安装的 `26.5`，否则使用 `xcrun` 
 
 Windows 的启动、WebView2、证书、采集与导出均未进行测试。GitHub Actions 提供 x64 与 ARM64 构建，以下为本地构建命令；播放编排的原生驱动目前仅在 macOS 实现。
 
+Windows 适配已包含 `MainPlayer.exe` 路由、当前用户证书管理，以及 SZPD 582 的真实 AES 参数解密和可选择的实验性文件名派生。运行流程、分析材料中的未确认项和实机验收见 [Windows SZPlayer 26.10.553](szplayer-windows-26.10.553.md)。Windows x64 CI 执行适配测试，这些测试不启动 TUN 或修改证书信任。
+
 ```sh
 npm run prepare:resources -- --platform windows-amd64
 npm run prepare:resources -- --platform windows-arm64

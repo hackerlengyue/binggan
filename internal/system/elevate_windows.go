@@ -2,13 +2,13 @@ package system
 
 import (
 	"context"
-	"crypto/sha1"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -16,11 +16,24 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func LaunchHelper(_ context.Context, executable, address, token string) error {
+func LaunchHelper(ctx context.Context, executable, address, token string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !filepath.IsAbs(executable) || strings.ContainsRune(executable+address+token, 0) {
+		return fmt.Errorf("流量接管程序路径或启动参数无效")
+	}
 	verb, _ := windows.UTF16PtrFromString("runas")
 	exe, _ := windows.UTF16PtrFromString(executable)
 	args, _ := windows.UTF16PtrFromString(syscall.EscapeArg("--capture-helper") + " " + syscall.EscapeArg(address) + " " + syscall.EscapeArg(token))
-	return windows.ShellExecute(0, verb, exe, args, nil, windows.SW_HIDE)
+	err := windows.ShellExecute(0, verb, exe, args, nil, windows.SW_HIDE)
+	if errors.Is(err, windows.ERROR_CANCELLED) {
+		return fmt.Errorf("Windows 管理员授权已取消，请点击重新连接后允许流量接管：%w", err)
+	}
+	if err != nil {
+		return fmt.Errorf("无法启动 Windows 流量接管程序：%w", err)
+	}
+	return nil
 }
 func InstallCertificate(parent context.Context, path string, progress CertificateProgress) error {
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
@@ -95,20 +108,5 @@ func certificateInStore(ctx context.Context, store string, raw []byte) (bool, er
 	if e != nil {
 		return false, fmt.Errorf("无法读取证书：%w", e)
 	}
-	sum := sha1.Sum(cert.Raw)
-	fingerprint := hex.EncodeToString(sum[:])
-	cmd := exec.CommandContext(ctx, "certutil.exe", "-user", "-store", store)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	out, e := cmd.CombinedOutput()
-	if ctx.Err() != nil {
-		return false, fmt.Errorf("证书操作已取消或超时，请在“证书管理”中重试")
-	}
-	if e != nil {
-		detail := strings.TrimSpace(string(out))
-		if detail == "" {
-			detail = e.Error()
-		}
-		return false, fmt.Errorf("无法读取 Windows 证书存储：%s", detail)
-	}
-	return outputHasFingerprint(string(out), fingerprint), nil
+	return certificateInUserStore(ctx, store, cert)
 }

@@ -19,6 +19,7 @@ import (
 	boxjson "github.com/sagernet/sing/common/json"
 	"net"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time.haomen/binggan/v2/internal/capture"
 	"time.haomen/binggan/v2/internal/engine"
@@ -68,6 +69,10 @@ func Context(ctx context.Context) context.Context {
 var captureProcesses = []string{"SzPlayer", "szplayer", "SzPlayer.exe", "szplayer.exe"}
 
 func ConfigJSON(d capture.Descriptor) ([]byte, error) {
+	return configJSONForPlatform(d, runtime.GOOS)
+}
+
+func configJSONForPlatform(d capture.Descriptor, platform string) ([]byte, error) {
 	if e := d.Validate(); e != nil {
 		return nil, e
 	}
@@ -94,10 +99,15 @@ func ConfigJSON(d capture.Descriptor) ([]byte, error) {
 	if len(paths) > 0 {
 		rules = append(rules, map[string]any{"process_path": paths, "action": "route", "outbound": "capture"})
 	}
+	tunOptions := map[string]any{"type": "tun", "tag": "app-traffic", "address": []string{"172.29.255.1/30", "fd6a:73:7a::1/126"}, "auto_route": true, "strict_route": false, "dns_mode": "disabled", "stack": "system", "mtu": 1500}
+	if platform == "windows" {
+		// Avoid reusing the default adapter name of another sing-box/VPN client.
+		tunOptions["interface_name"] = "BingganCapture"
+	}
 	m := map[string]any{
 		"log":       map[string]any{"level": "warn", "timestamp": true, "disabled": false},
 		"dns":       map[string]any{"servers": []any{map[string]any{"type": "local", "tag": "local"}}, "final": "local"},
-		"inbounds":  []any{map[string]any{"type": "tun", "tag": "app-traffic", "address": []string{"172.29.255.1/30", "fd6a:73:7a::1/126"}, "auto_route": true, "strict_route": false, "dns_mode": "disabled", "stack": "system", "mtu": 1500}},
+		"inbounds":  []any{tunOptions},
 		"outbounds": []any{map[string]any{"type": "direct", "tag": "direct"}, map[string]any{"type": "socks", "version": "5", "tag": "capture", "server": host, "server_port": n, "username": d.ProxyUsername, "password": d.ProxyPassword}},
 		"route":     map[string]any{"auto_detect_interface": true, "default_domain_resolver": "local", "final": "direct", "rules": rules},
 	}

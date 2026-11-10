@@ -193,8 +193,8 @@ func (a *App) Diagnose(parent context.Context) (Diagnosis, error) {
 	return Diagnosis{store.Now(), runtime.Version(), player, engine.KnownPlayers, checks, engine.HashValid(a.Config.AppMD5)}, nil
 }
 func (a *App) keyHash(k engine.Key) (string, error) {
-	// Direct RC4 mode never unwraps an AES password.
-	if k.Data["pattern"] == "4" {
+	// Direct RC4 and container AES do not use the player's password-unwrapping hash.
+	if k.Data["pattern"] == "4" || k.IsSZPD() {
 		return "", nil
 	}
 	s, err := a.Settings()

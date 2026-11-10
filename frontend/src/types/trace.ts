@@ -58,6 +58,11 @@ export interface KeyJsonPayload {
     audio?: number;
     softwareName?: string;
     appMd5?: string;
+    aesKey?: string;
+    aesIV?: string;
+    derivation?: string;
+    fileName?: string;
+    fileNameHex?: string;
     mimatuokeqian?: string;
   };
 }

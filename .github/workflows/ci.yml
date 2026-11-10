@@ -143,6 +143,14 @@ jobs:
       - run: npm run setup
       - name: Prepare platform tools
         run: npm run prepare:resources -- --platform "windows-$env:TARGET_ARCH"
+      - name: Test Windows capture and decryption
+        if: matrix.arch == 'amd64'
+        run: |
+          $env:PATH = "$(Join-Path $pwd 'resources/windows-amd64/tools');$env:PATH"
+          go test ./internal/system ./internal/tunnel ./internal/engine ./internal/workspace ./internal/tasks -run 'Test(Windows|SZPD|Player261056SingboxCaptureToHistory)'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test ./internal/captureproxy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build application
         run: npm run build -- -platform "windows/$env:TARGET_ARCH"
       - name: Package application

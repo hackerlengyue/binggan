@@ -682,6 +682,38 @@ function buildPayload(acc: KeyAccumulator): KeyJsonPayload {
 export function validatePayload(payload: KeyJsonPayload): string[] {
   const issues: string[] = [];
   const data = payload.getPwdData;
+  if (data.pattern === "szpd") {
+    if (data.derivation !== undefined) {
+      if (data.derivation !== "filename-fill-v1")
+        issues.push("未知的 SZPD 派生方案，仅支持 filename-fill-v1");
+      if (data.aesKey !== undefined || data.aesIV !== undefined)
+        issues.push("SZPD 派生模式不能同时填写 aesKey/aesIV");
+      if (data.fileName !== undefined && data.fileNameHex !== undefined)
+        issues.push("fileName 和 fileNameHex 只能填写一种");
+      if (
+        data.fileName !== undefined &&
+        (!data.fileName ||
+          new TextEncoder().encode(data.fileName).length > 32768 ||
+          data.fileName.includes("\0"))
+      )
+        issues.push("派生文件名必须为 1–32768 字节，且不能包含空字节");
+      if (
+        data.fileNameHex !== undefined &&
+        (data.fileNameHex.length > 65536 ||
+          !/^(?:[a-f0-9]{2})+$/i.test(data.fileNameHex) ||
+          data.fileNameHex.match(/../g)?.includes("00"))
+      )
+        issues.push(
+          "fileNameHex 必须是有效的非空文件名字节十六进制，且不能包含空字节",
+        );
+      return issues;
+    }
+    if (!/^[a-f0-9]{64}$/i.test(data.aesKey ?? ""))
+      issues.push("SZPD 需要 64 位十六进制 aesKey");
+    if (!/^[a-f0-9]{32}$/i.test(data.aesIV ?? ""))
+      issues.push("SZPD 需要 32 位十六进制 aesIV");
+    return issues;
+  }
   const slots = data.pattern === "1" || data.pattern === "3";
   if (data.pattern === "4") {
     if (

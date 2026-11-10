@@ -75,6 +75,9 @@ func (k Key) Validate() error {
 	if len(k.Passwords) > 10000 || k.Data == nil {
 		return errors.New("缺少完整的 passwords/getPwdData")
 	}
+	if k.IsSZPD() {
+		return k.validateSZPDParameters()
+	}
 	for i, p := range k.Passwords {
 		n, err := strconv.Atoi(i)
 		if err != nil || n < 1 || len(p) < 1 || len(p) > 4096 {

@@ -175,6 +175,8 @@
   "已删除 {count} 个任务": "Deleted {count} tasks",
   "返回秘钥管理": "Back to key library",
   "解密视频": "Decrypt video",
+  "MP4 封装": "MP4 remuxing",
+  "密钥派生": "Key derivation",
   "删除": "Delete",
   "请返回秘钥管理重新选择。": "Go back to the key library and select a record.",
   "搜索记录名称": "Search record names",

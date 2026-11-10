@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time.haomen/binggan/v2/internal/procutil"
 	"time"
+	"time.haomen/binggan/v2/internal/procutil"
 )
 
 type LogFunc func(level, message string)
@@ -141,7 +141,7 @@ func runMediaInput(ctx context.Context, log LogFunc, total float64, progress fun
 	return nil
 }
 func StageName(stage string) string {
-	if label, ok := map[string]string{"prepare": "输入检查", "decrypt": "视频解密", "scan": "音频检查", "restore": "音频修复", "validate": "最终校验", "complete": "处理完成"}[stage]; ok {
+	if label, ok := map[string]string{"prepare": "输入检查", "derive": "密钥派生", "decrypt": "视频解密", "remux": "MP4 封装", "scan": "音频检查", "restore": "音频修复", "validate": "最终校验", "complete": "处理完成"}[stage]; ok {
 		return label
 	}
 	return stage

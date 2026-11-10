@@ -1,0 +1,7 @@
+{
+  "passwords": {},
+  "getPwdData": {
+    "pattern": "szpd",
+    "derivation": "filename-fill-v1"
+  }
+}

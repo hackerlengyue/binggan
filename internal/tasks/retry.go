@@ -19,6 +19,7 @@ func (m *Manager) retainInput(id string, p Prepared) (Prepared, error) {
 	if err := m.ctx.Err(); err != nil {
 		return p, err
 	}
+	p.Key = p.Key.WithInputName(p.Name)
 	source, err := os.Open(p.Input)
 	if err != nil {
 		return p, err
@@ -91,6 +92,7 @@ func (m *Manager) readPrepared(id string) (Prepared, error) {
 	if err = p.Key.Validate(); err != nil {
 		return p, err
 	}
+	p.Key = p.Key.WithInputName(p.Name)
 	p.Input = m.Path(id, "input.sz")
 	p.UploadID = ""
 	return p, nil

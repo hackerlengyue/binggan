@@ -31,7 +31,7 @@ export function makeImportedKey(file: KeyFile): KeyHistoryEntry {
   )
     throw new Error("密钥文件需要包含 passwords 和 getPwdData。");
 
-  const noSlots = ["4", "<null>"].includes(value.getPwdData.pattern);
+  const noSlots = ["4", "<null>", "szpd"].includes(value.getPwdData.pattern);
   const keyJson = {
     ...value,
     getPwdData: {
@@ -54,7 +54,7 @@ export function makeImportedKey(file: KeyFile): KeyHistoryEntry {
     ![data.den, data.pmn, data.whenLong].every(
       (value) =>
         Number.isSafeInteger(value) &&
-        (data.pattern === "4" || data.pattern === "<null>"
+        (["4", "<null>", "szpd"].includes(data.pattern)
           ? value >= 0
           : value > 0),
     ) ||

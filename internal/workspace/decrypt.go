@@ -203,6 +203,9 @@ func (a *App) CreateTask(v CreateTaskInput) (tasks.View, error) {
 		if err != nil {
 			return tasks.View{}, invalidTask(p.Name + "：" + err.Error())
 		}
+		if err = engine.ValidateInputKey(p.Input, p.Key); err != nil {
+			return tasks.View{}, invalidTask(p.Name + "：" + err.Error())
+		}
 		p.AppHash, err = a.keyHash(p.Key)
 		if err != nil {
 			return tasks.View{}, invalidTask(p.Name + "：" + err.Error())

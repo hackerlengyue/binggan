@@ -25,7 +25,7 @@ export function decryptLogEvents(text: string): DecryptLogEvent[] {
     let message = parsed.message;
     if (
       level === "INFO" &&
-      !/^(?:子任务已创建|第 \d+ 次尝试|开始视频解密|视频解密完成|开始音频检查|音频检查完成|开始音频修复|音频修复完成|开始最终校验|最终校验完成|校验结果|处理结果)/.test(
+      !/^(?:子任务已创建|第 \d+ 次尝试|检测到 SZPD|容器解密完成|SZPD 解密|开始视频解密|视频解密完成|开始音频检查|音频检查完成|开始音频修复|音频修复完成|开始最终校验|最终校验完成|校验结果|处理结果)/.test(
         message,
       )
     )

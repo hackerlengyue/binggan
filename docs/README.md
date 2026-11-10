@@ -9,6 +9,7 @@
 | 开发、测试与打包 / Development, testing, and packaging | [开发指南](development/README.md) | [Development guide](development/README.en.md) |
 | 前端开发与界面约定 / Frontend development and UI conventions | [前端指南](development/frontend.md) | [Frontend guide](development/frontend.md#english) |
 | SzPlayer 26.10.56 兼容性 / Compatibility | [版本差异与验证范围](development/szplayer-26.10.56.md) | [Archived analysis (Chinese)](development/szplayer-26.10.56-source.md) |
+| Windows SZPlayer 26.10.553 | [采集、SZPD 解密与证据边界](development/szplayer-windows-26.10.553.md) | [Windows guide (Chinese)](development/szplayer-windows-26.10.553.md) |
 
 ## 协作 / Contributing
 

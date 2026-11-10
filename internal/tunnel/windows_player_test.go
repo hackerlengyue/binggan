@@ -1,11 +1,14 @@
 package tunnel
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
 	boxlog "github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route/rule"
+	boxjson "github.com/sagernet/sing/common/json"
 )
 
 // The vendor's Windows distribution contains MainPlayer.exe, not SzPlayer.exe.
@@ -32,6 +35,7 @@ func TestWindowsDistributionPlayerRoute(t *testing.T) {
 	}{
 		{`C:\Users\test\Downloads\SZPlayer 24.12.531\MainPlayer.exe`, true},
 		{`D:\学习软件\SZPlayer 26.06.551\MainPlayer.exe`, true},
+		{`D:\课程\SZPlayer 26.10.553\MainPlayer.exe`, true},
 		{`C:\Program Files\SZPlayer\mainplayer.EXE`, true},
 		{`C:\Program Files\OtherPlayer\MainPlayer.exe`, false},
 		{`C:\Users\test\Downloads\NotSZPlayer\MainPlayer.exe`, false},
@@ -50,5 +54,29 @@ func TestWindowsDistributionPlayerRoute(t *testing.T) {
 				t.Fatalf("capture = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestWindowsTunnelUsesDedicatedAdapterWithoutTakingOverDNS(t *testing.T) {
+	raw, err := configJSONForPlatform(descriptor(t), "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts, err := boxjson.UnmarshalExtendedContext[option.Options](Context(t.Context()), raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tunOptions, ok := opts.Inbounds[0].Options.(*option.TunInboundOptions)
+	if !ok || tunOptions.InterfaceName != "BingganCapture" {
+		t.Fatal("missing dedicated Wintun adapter")
+	}
+	var document struct {
+		Inbounds []map[string]any `json:"inbounds"`
+	}
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	if document.Inbounds[0]["strict_route"] != false || document.Inbounds[0]["dns_mode"] != "disabled" {
+		t.Fatal("capture must preserve normal Windows DNS")
 	}
 }
