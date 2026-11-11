@@ -154,6 +154,10 @@ func (a *App) CreateTask(v CreateTaskInput) (tasks.View, error) {
 		return tasks.View{}, invalidTask("任务名称须为 1–100 字，视频须为 1–100 个")
 	}
 	items := make([]tasks.Prepared, 0, len(v.Videos))
+	resolve, err := a.keyResolver()
+	if err != nil {
+		return tasks.View{}, err
+	}
 	totalKeyBytes := 0
 	for _, video := range v.Videos {
 		totalKeyBytes += len(video.KeyJSON)
@@ -206,10 +210,11 @@ func (a *App) CreateTask(v CreateTaskInput) (tasks.View, error) {
 		if err = engine.ValidateInputKey(p.Input, p.Key); err != nil {
 			return tasks.View{}, invalidTask(p.Name + "：" + err.Error())
 		}
-		p.AppHash, err = a.keyHash(p.Key)
+		resolved, err := resolve(p.Key)
 		if err != nil {
 			return tasks.View{}, invalidTask(p.Name + "：" + err.Error())
 		}
+		p.Key, p.AppHash = resolved.Key, resolved.AppHash
 		items = append(items, p)
 	}
 	result, err := a.Tasks.Create(v.Name, items)

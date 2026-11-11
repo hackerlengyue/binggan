@@ -106,6 +106,7 @@ export interface DiagnosticCheck {
   group: string;
   name: string;
   ok: boolean;
+  warning?: boolean;
   message: string;
 }
 
@@ -228,6 +229,12 @@ export interface PlayerSettings {
   mode: string;
   softwareName: string;
   appMd5: string;
+}
+
+export interface PreparedKey {
+  keyJson: string;
+  adjusted: boolean;
+  source: string;
 }
 
 export interface Progress {
@@ -511,6 +518,9 @@ export const WorkspaceService = {
   },
   powerSettings(): Promise<Settings> {
     return call("WorkspaceService.PowerSettings");
+  },
+  prepareKeys(raw: string[]): Promise<PreparedKey[]> {
+    return call("WorkspaceService.PrepareKeys", raw);
   },
   resources(query: ResourceQuery): Promise<ResourcePage> {
     return call("WorkspaceService.Resources", query);

@@ -7,9 +7,35 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo"
 )
+
+// Keep the player planner independently runnable when an unrelated page's
+// end-to-end check fails. It uses the isolated fixture, never a real player.
+func TestMyGoPlayerPlanner(t *testing.T) {
+	if os.Getenv("BINGGAN_MYGO_E2E") != "1" {
+		t.Skip("set BINGGAN_MYGO_E2E=1 to run the native player planner test")
+	}
+	fixture := &mygoPlayerFixture{}
+	mygoE2E.player = fixture
+	mygoE2EStart.Do(func() { go mygoE2E.start() })
+	select {
+	case <-mygoE2E.ready:
+		if mygoE2E.startErr != nil {
+			t.Fatal(mygoE2E.startErr)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("workspace startup timed out")
+	}
+	w := mygo.NewWindow(mygo.WindowOptions{Title: "Binggan Player E2E", URL: "/", Width: 1320, Height: 880})
+	defer w.Destroy()
+	mygoE2E.window = w
+	waitMyGoPage(t, w, `document.querySelector('#main-content section[aria-label="数据概览"]')`)
+	verifyMyGoPlayerPlanner(t, w)
+	verifyMyGoPlayerReadiness(t, w, fixture)
+}
 
 func verifyMyGoPlayerReadiness(t *testing.T, w *mygo.Window, fixture *mygoPlayerFixture) {
 	t.Helper()

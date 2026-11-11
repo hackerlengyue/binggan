@@ -121,10 +121,7 @@ func (k Key) Validate() error {
 }
 func DetectPlayer() (Player, error) {
 	if runtime.GOOS == "windows" {
-		if installations := WindowsPlayerInstallations(); len(installations) > 0 {
-			return Player{}, &PlayerParametersUnavailable{Installation: installations[0]}
-		}
-		return Player{}, errors.New("未找到 Windows 播放器，请先打开深造播放器，再重新检测")
+		return detectWindowsPlayer(WindowsPlayerInstallations())
 	}
 	home, _ := os.UserHomeDir()
 	for _, app := range []string{"/Applications/SzPlayer.app", filepath.Join(home, "Applications/SzPlayer.app")} {
@@ -208,15 +205,40 @@ func playerFileHash(f *os.File) (string, error) {
 	return digest, nil
 }
 func ResolveHash(data map[string]any, env string, fallback *Player) (string, error) {
+	return resolveHash(data, env, fallback, DetectPlayer)
+}
+
+var windowsProtocolVersionPattern = regexp.MustCompile(`^ShenZaoLocalPlayer[0-9]+$`)
+
+func playerVersionMatches(version string, player Player) bool {
+	if version == "" || version == player.SoftwareName {
+		return true
+	}
+	if HashValid(version) && HashValid(player.SoftwareName) {
+		return strings.EqualFold(version, player.SoftwareName)
+	}
+	// Older Windows captures name the protocol family, while file discovery
+	// identifies the executable by MD5. These are different namespaces. Keep
+	// exact checks for named versions and distinct executable hashes; Mima
+	// still validates the selected hash against the captured AES envelope.
+	return windowsProtocolVersionPattern.MatchString(version) && HashValid(player.SoftwareName) && strings.EqualFold(player.SoftwareName, player.AppMD5)
+}
+
+func resolveHash(data map[string]any, env string, fallback *Player, detect func() (Player, error)) (string, error) {
 	if s := pick(data, "appMd5", "app_md5"); s != "" {
 		if !HashValid(s) {
 			return "", errors.New("App 校验值无效")
 		}
 		return strings.ToLower(s), nil
 	}
+	for _, field := range []string{"softMd5", "softmd5", "soft_md5"} {
+		if hash := pick(data, field); HashValid(hash) {
+			return strings.ToLower(hash), nil
+		}
+	}
 	version := pick(data, "softwareName", "softwarename", "software_name")
 	if fallback != nil {
-		if version != "" && version != fallback.SoftwareName {
+		if !playerVersionMatches(version, *fallback) {
 			return "", errors.New("密钥中的 App 版本与解密配置不一致")
 		}
 		return fallback.AppMD5, nil
@@ -230,11 +252,11 @@ func ResolveHash(data map[string]any, env string, fallback *Player) (string, err
 	if h, ok := KnownPlayers[version]; ok {
 		return h, nil
 	}
-	p, err := DetectPlayer()
+	p, err := detect()
 	if err != nil {
 		return "", fmt.Errorf("无法获取 App 校验值：%w；请在解密设置中配置与提取记录对应的版本和校验值", err)
 	}
-	if version != "" && version != p.SoftwareName {
+	if !playerVersionMatches(version, p) {
 		return "", errors.New("密钥中的 App 版本与本机版本不一致")
 	}
 	return p.AppMD5, nil

@@ -98,6 +98,8 @@
   "最近检测：{time}": "Last tested: {time}",
   "正在检测": "Checking",
   "检测环境": "Run checks",
+  "待配置": "Setup needed",
+  "播放器解密参数": "Player decryption details",
   "检测项目": "Check",
   "状态": "Status",
   "检测结果": "Result",
@@ -890,5 +892,7 @@
   "已关闭": "Off",
   "队列分流连接释放失败": "Could not release queue traffic forwarding",
   "队列分流连接未确认就绪": "Queue traffic forwarding was not confirmed ready",
-  "队列分流连接已中断": "Queue traffic forwarding was interrupted"
+  "队列分流连接已中断": "Queue traffic forwarding was interrupted",
+  "已自动匹配 {count} 份密钥的解密参数": "Matched decryption parameters for {count} key files automatically",
+  "密钥兼容检查响应格式无效": "The key compatibility response is invalid"
 }

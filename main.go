@@ -16,6 +16,15 @@ import (
 var Navigate = mygo.NewEvent[string]("desktop:navigate")
 var DecryptTaskFinished = mygo.NewEvent[tasks.Finished]("desktop:decrypt-task-finished")
 
+func mainWindowOptions() mygo.WindowOptions {
+	return mygo.WindowOptions{
+		Title: "饼干大小姐", URL: "/", Width: 1320, Height: 880,
+		MinWidth: 1000, MinHeight: 680, StateKey: "main",
+		BackgroundColor: "#fafafa", TitleBarStyle: mygo.TitleBarHiddenInset,
+		TitleBarHeight: 52,
+	}
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--surge-capture-helper" {
 		if len(os.Args) != 4 {
@@ -91,11 +100,7 @@ func main() {
 	}
 	mygo.App.SetMenu(workbench.menu())
 	mygo.App.WhenReady(func() {
-		workbench.window = mygo.NewWindow(mygo.WindowOptions{
-			Title: "饼干大小姐", URL: "/", Width: 1320, Height: 880,
-			MinWidth: 1000, MinHeight: 680, StateKey: "main",
-			BackgroundColor: "#fafafa", TitleBarStyle: mygo.TitleBarHiddenInset,
-		})
+		workbench.window = mygo.NewWindow(mainWindowOptions())
 		cleanupTray := installWindowTray(workbench.window, lifecycle)
 		lifecycle.reveal = func() { showMainWindow(workbench.window) }
 		mygo.App.OnWillQuit(func(*mygo.QuitEvent) { cleanupTray() })

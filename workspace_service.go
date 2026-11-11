@@ -174,6 +174,10 @@ func (s *WorkspaceService) CreateTask(ctx context.Context, input workspace.Creat
 	return audited(ctx, s, "创建解密任务", true, func(a *workspace.App) (tasks.View, error) { return a.CreateTask(input) })
 }
 
+func (s *WorkspaceService) PrepareKeys(ctx context.Context, raw []string) ([]workspace.PreparedKey, error) {
+	return audited(ctx, s, "匹配密钥解密参数", true, func(a *workspace.App) ([]workspace.PreparedKey, error) { return a.PrepareKeys(raw) })
+}
+
 func (s *WorkspaceService) DeleteTasks(ctx context.Context, ids []string) (tasks.DeleteResult, error) {
 	return audited(ctx, s, "删除解密任务", true, func(a *workspace.App) (tasks.DeleteResult, error) { return a.DeleteTasks(ids) })
 }

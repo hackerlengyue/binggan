@@ -824,7 +824,7 @@ async function waitForCompletion(
   let continuedAfterRecovery = false;
   let newCoursePromptDismissed = false;
   let resumeConfirmationAt: number | undefined;
-  let lastChangedAt = 0;
+  let lastAdvancedAt = 0;
   let unavailableSince: number | undefined;
   let stableCompletionSamples = 0;
   let completionDuration: number | undefined;
@@ -854,9 +854,14 @@ async function waitForCompletion(
   const recover = async (message: string) => {
     await checkpoint(dependencies, signal);
     if (!dependencies.recoverPlayback) throw new Error(message);
+    const diagnostic = [
+      message,
+      progressDetail(previous),
+      `监控基准：${furthestSeconds} 秒；${furthestPercent.toFixed(4)}%；距上次有效推进 ${Math.floor((activeElapsed - lastAdvancedAt) / 1000)} 秒`,
+    ].join("\n");
     await dependencies.recoverPlayback(
       {
-        message,
+        message: diagnostic,
         progress: { ...previous },
         expectedPid: baseline.pid,
         sampleAt: lastSampleAt,
@@ -871,7 +876,11 @@ async function waitForCompletion(
     continuedAfterRecovery = true;
     resumeConfirmationAt = activeElapsed;
     startupSince = activeElapsed;
-    lastChangedAt = activeElapsed;
+    lastAdvancedAt = activeElapsed;
+    // A player can restore an earlier position while buffering or recovering.
+    // Confirm movement from that position rather than a pre-recovery maximum.
+    furthestSeconds = previous.seconds ?? 0;
+    furthestPercent = previous.percent ?? 0;
     deadline = activeElapsed + maxElapsed;
     unavailableSince = undefined;
     stableCompletionSamples = 0;
@@ -949,7 +958,9 @@ async function waitForCompletion(
       finalFrame = undefined;
       lastSampleAt = undefined;
       unavailableSince = undefined;
-      lastChangedAt = activeElapsed;
+      lastAdvancedAt = activeElapsed;
+      furthestSeconds = 0;
+      furthestPercent = 0;
       requireCapture();
     } else {
       assertNoBlockingState(current);
@@ -1042,6 +1053,7 @@ async function waitForCompletion(
         ? playback.seconds > furthestSeconds
         : slider !== undefined && slider > furthestPercent);
     if (advanced) {
+      lastAdvancedAt = activeElapsed;
       deadline = activeElapsed + maxElapsed;
       if (resumeConfirmationAt !== undefined) {
         dependencies.onLog("info", "播放恢复已确认", progressDetail(playback));
@@ -1052,11 +1064,10 @@ async function waitForCompletion(
       furthestSeconds = Math.max(furthestSeconds, playback.seconds ?? 0);
       furthestPercent = Math.max(furthestPercent, slider ?? 0);
     }
-    if (changed) lastChangedAt = activeElapsed;
     if (
       canRecoverFullscreen &&
       progressHasStarted &&
-      activeElapsed - lastChangedAt >= 3000 &&
+      activeElapsed - lastAdvancedAt >= 3000 &&
       !completionReached(current, true) &&
       !roundedFinalFrame(current, playback)
     ) {
@@ -1110,7 +1121,7 @@ async function waitForCompletion(
       dependencies.onLog(
         "info",
         "播放进度",
-        progressDetail(playback, activeElapsed - lastChangedAt),
+        progressDetail(playback, activeElapsed - lastAdvancedAt),
         { kind: "progress", step: "waitingCompletion" },
       );
       lastProgressLogAt = activeElapsed;
@@ -1161,7 +1172,7 @@ async function waitForCompletion(
     }
     if (
       progressHasStarted &&
-      activeElapsed - lastChangedAt >= STALLED_PLAYBACK_MS
+      activeElapsed - lastAdvancedAt >= STALLED_PLAYBACK_MS
     ) {
       await recover(
         "连续 120 秒未观察到播放进度变化，请检查播放器是否暂停或正在缓冲",

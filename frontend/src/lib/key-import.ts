@@ -1,10 +1,45 @@
 import { isKeyJsonPayload } from "@/lib/key-history";
-import { validatePayload } from "@/lib/keyjson";
+import { capturedAppMd5, validatePayload } from "@/lib/keyjson";
 import type { KeyHistoryEntry } from "@/types/trace";
+import { WorkspaceService } from "@/mygo";
 
 export interface KeyFile {
   name: string;
   raw: string;
+}
+
+/** Match legacy envelopes before anything is written to key history. */
+export async function prepareImportedKeys(files: KeyFile[]): Promise<{
+  files: KeyFile[];
+  adjusted: number;
+}> {
+  if (!files.length || files.length > 100)
+    throw new Error("每次请选择 1–100 个密钥文件。");
+  const entries = files.map(makeImportedKey);
+  const prepared = await WorkspaceService.prepareKeys(
+    entries.map((entry) => JSON.stringify(entry.keyJson)),
+  );
+  if (
+    !Array.isArray(prepared) ||
+    prepared.length !== files.length ||
+    prepared.some(
+      (item) =>
+        !item ||
+        typeof item.keyJson !== "string" ||
+        typeof item.adjusted !== "boolean" ||
+        typeof item.source !== "string",
+    )
+  )
+    throw new Error("密钥兼容检查响应格式无效");
+  const matched = prepared.map((item, index) => ({
+    name: files[index]!.name,
+    raw: item.keyJson,
+  }));
+  matched.forEach(makeImportedKey);
+  return {
+    files: matched,
+    adjusted: prepared.filter((item) => item.adjusted).length,
+  };
 }
 
 export function keyFileError(file: Pick<File, "name" | "size">): string {
@@ -32,11 +67,15 @@ export function makeImportedKey(file: KeyFile): KeyHistoryEntry {
     throw new Error("密钥文件需要包含 passwords 和 getPwdData。");
 
   const noSlots = ["4", "<null>", "szpd"].includes(value.getPwdData.pattern);
+  const capturedHash = capturedAppMd5(value.getPwdData);
   const keyJson = {
     ...value,
     getPwdData: {
       ...(noSlots ? { 密码: "", uit: "", den: 0, pmn: 0 } : {}),
       ...value.getPwdData,
+      ...(value.getPwdData.appMd5 === undefined && capturedHash
+        ? { appMd5: capturedHash }
+        : {}),
       whenLong:
         value.getPwdData.whenLong ??
         value.getPwdData.den ??

@@ -61,6 +61,19 @@ test("progress retention preserves lifecycle and failure records under a long ru
   assert.equal(entries.length, 602);
 });
 
+test("a full lifecycle log cannot erase all recent progress evidence before a timeout", () => {
+  const entries = [
+    ...Array.from({ length: 500 }, (_, i) => ({ id: `lifecycle-${i}` })),
+    { id: "latest-progress", kind: "progress" },
+    { id: "timeout" },
+  ];
+  const kept = retainExecutionLogs(entries, 500);
+  assert.equal(kept.length, 500);
+  assert.equal(kept.at(-1)!.id, "timeout");
+  assert.ok(kept.some((entry) => entry.id === "latest-progress"));
+  assert.ok(kept.some((entry) => entry.id === "lifecycle-499"));
+});
+
 test("capture diagnostics distinguish an empty incomplete record from unknown quality", () => {
   assert.equal(captureResultDetail({ name: "第一讲" }), "记录名称：第一讲");
   assert.match(

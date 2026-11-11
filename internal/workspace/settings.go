@@ -93,6 +93,7 @@ type DiagnosticCheck struct {
 	Group   string `json:"group"`
 	Name    string `json:"name"`
 	OK      bool   `json:"ok"`
+	Warning bool   `json:"warning,omitempty"`
 	Message string `json:"message"`
 }
 
@@ -176,43 +177,31 @@ func (a *App) Diagnose(parent context.Context) (Diagnosis, error) {
 	add("数据存储", results[2].name, results[2].err, results[2].message)
 	add("数据存储", results[3].name, results[3].err, results[3].message)
 	add("解密", "Go 解密引擎", nil, "AES / RC4 / MP4 / 音频频谱")
-	var player *engine.Player
-	err := playerErr
+	player, playerChecks := diagnosePlayer(p, playerErr)
+	checks = append(checks, playerChecks...)
+	return Diagnosis{store.Now(), runtime.Version(), player, engine.KnownPlayers, checks, engine.HashValid(a.Config.AppMD5)}, nil
+}
+
+func diagnosePlayer(p engine.Player, err error) (*engine.Player, []DiagnosticCheck) {
+	check := DiagnosticCheck{Group: "解密", Name: "播放器自动识别", OK: err == nil, Message: p.SoftwareName}
+	if err == nil {
+		return &p, []DiagnosticCheck{check}
+	}
+	check.Message = err.Error()
 	var unavailable *engine.PlayerParametersUnavailable
 	if errors.As(err, &unavailable) {
 		location := unavailable.Installation.Path
 		if unavailable.Installation.Version != "" {
 			location += " · " + unavailable.Installation.Version
 		}
-		add("解密", "播放器安装位置", nil, location)
-	}
-	if err == nil {
-		player = &p
-	}
-	add("解密", "播放器自动识别", err, p.SoftwareName)
-	return Diagnosis{store.Now(), runtime.Version(), player, engine.KnownPlayers, checks, engine.HashValid(a.Config.AppMD5)}, nil
-}
-func (a *App) keyHash(k engine.Key) (string, error) {
-	// Direct RC4 and container AES do not use the player's password-unwrapping hash.
-	if k.Data["pattern"] == "4" || k.IsSZPD() {
-		return "", nil
-	}
-	s, err := a.Settings()
-	if err != nil {
-		return "", err
-	}
-	var p *engine.Player
-	if s.Mode == "manual" {
-		p = &engine.Player{SoftwareName: s.SoftwareName, AppMD5: s.AppMD5}
-	}
-	h, err := engine.ResolveHash(k.Data, a.Config.AppMD5, p)
-	if err != nil {
-		// Plain mima keys do not require the application's AES derivation hash.
-		if _, plainErr := engine.Mima(k.Data, ""); plainErr == nil {
-			return "", nil
+		check.Name = "播放器解密参数"
+		check.Warning = true
+		return nil, []DiagnosticCheck{
+			{Group: "解密", Name: "播放器安装位置", OK: true, Message: location},
+			check,
 		}
 	}
-	return h, err
+	return nil, []DiagnosticCheck{check}
 }
 func EnsureDirectories(root string) error {
 	for _, dir := range []string{"input", "keys"} {

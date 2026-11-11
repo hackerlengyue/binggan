@@ -69,9 +69,18 @@ onMounted(() => {
               t(check.name)
             }}</TableCell
             ><TableCell class="text-center"
-              ><Badge :variant="check.ok ? 'success' : 'destructive'">{{
-                check.ok ? t("通过") : t("异常")
-              }}</Badge></TableCell
+              ><Badge
+                :variant="
+                  check.ok
+                    ? 'success'
+                    : check.warning
+                      ? 'warning'
+                      : 'destructive'
+                "
+                >{{
+                  check.ok ? t("通过") : check.warning ? t("待配置") : t("异常")
+                }}</Badge
+              ></TableCell
             ><TableCell
               class="min-w-0 break-words whitespace-normal text-muted-foreground [overflow-wrap:anywhere]"
               >{{ t(check.message) }}</TableCell

@@ -2,7 +2,11 @@ import { t } from "@/i18n";
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from "vue";
 import { useTraceStore } from "@/stores/trace";
 import { buildKeyJson } from "@/lib/keyjson";
-import { parseSettings, type PlayerSettings } from "@/lib/connection-api";
+import {
+  parseSettings,
+  playerVersionMatches,
+  type PlayerSettings,
+} from "@/lib/connection-api";
 import { toast } from "vue-sonner";
 import { useEnvironmentInfo } from "@/composables/useEnvironmentInfo";
 import { WorkspaceService } from "@/mygo";
@@ -110,7 +114,8 @@ export function usePlayerSettings() {
     draft.softwareName = record.softwareName;
     draft.appMd5 =
       record.appMd5 ||
-      (diagnosis.value?.player?.softwareName === record.softwareName
+      (diagnosis.value?.player &&
+      playerVersionMatches(record.softwareName, diagnosis.value.player)
         ? diagnosis.value.player.appMd5
         : diagnosis.value?.knownPlayers[record.softwareName]) ||
       "";

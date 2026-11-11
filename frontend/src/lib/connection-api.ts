@@ -5,12 +5,29 @@ export interface Player {
 export interface PlayerSettings extends Player {
   mode: "auto" | "manual";
 }
+export function playerVersionMatches(version: string, player: Player): boolean {
+  if (!version || version === player.softwareName) return true;
+  const hash = /^[a-f0-9]{32}$/i;
+  if (hash.test(version) && hash.test(player.softwareName))
+    return version.toLowerCase() === player.softwareName.toLowerCase();
+  return (
+    /^ShenZaoLocalPlayer[0-9]+$/.test(version) &&
+    hash.test(player.softwareName) &&
+    player.softwareName.toLowerCase() === player.appMd5.toLowerCase()
+  );
+}
 export interface Diagnosis {
   checkedAt: string;
   go: string;
   player: Player | null;
   knownPlayers: Record<string, string>;
-  checks: { group: string; name: string; ok: boolean; message: string }[];
+  checks: {
+    group: string;
+    name: string;
+    ok: boolean;
+    warning?: boolean;
+    message: string;
+  }[];
   environmentAppMd5Configured: boolean;
 }
 function record(value: unknown): value is Record<string, unknown> {
@@ -44,6 +61,9 @@ export function parseDiagnosis(value: unknown): Diagnosis {
         !record(check) ||
         typeof check.name !== "string" ||
         typeof check.ok !== "boolean" ||
+        (check.warning !== undefined &&
+          (typeof check.warning !== "boolean" ||
+            (check.warning && check.ok))) ||
         (check.group !== undefined && typeof check.group !== "string") ||
         typeof check.message !== "string",
     ) ||

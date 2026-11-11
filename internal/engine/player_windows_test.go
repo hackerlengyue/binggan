@@ -2,6 +2,8 @@ package engine
 
 import (
 	"bufio"
+	"crypto/md5"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -17,9 +19,14 @@ func TestWindowsExplicitPortableLocation(t *testing.T) {
 	if len(items) == 0 || items[0].Path != path {
 		t.Fatalf("explicit portable path not found: %+v", items)
 	}
-	_, err := DetectPlayer()
-	if !PlayerWasLocated(err) {
-		t.Fatalf("located player reported as missing: %v", err)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("%x", md5.Sum(data))
+	player, err := DetectPlayer()
+	if err != nil || player.SoftwareName != want || player.AppMD5 != want {
+		t.Fatalf("explicit player parameters = %+v, %v; want %s", player, err, want)
 	}
 }
 

@@ -13,9 +13,10 @@
  if (!id || !/^[a-zA-Z0-9-]{1,100}$/.test(id)) { fail(); return; }
  video.addEventListener('error', fail);
  const revision = params.get('v') || '';
- let desktop = !!window.mygo;
- try { desktop ||= window.parent !== window && !!window.parent.mygo; } catch {}
- const streamURL = path => desktop ? 'binggan-stream://localhost' + path : path;
+ let bridge = window.mygo;
+ try { bridge ||= window.parent !== window && window.parent.mygo; } catch {}
+ const streamOrigin = bridge ? (bridge.platform === 'win32' ? 'http://binggan-stream.localhost' : 'binggan-stream://localhost') : '';
+ const streamURL = path => streamOrigin + path;
  video.poster = streamURL('/api/resources/' + encodeURIComponent(id) + '/thumbnail?v=' + encodeURIComponent(revision));
  video.src = streamURL('/api/resources/' + encodeURIComponent(id) + '/stream');
  const labels = english ? {toggle:'Play / pause',rewind:'Back 10 seconds',forward:'Forward 10 seconds',mute:'Mute / unmute',fullscreen:'Fullscreen'} : {toggle:'播放 / 暂停',rewind:'后退 10 秒',forward:'前进 10 秒',mute:'静音 / 取消静音',fullscreen:'全屏'};

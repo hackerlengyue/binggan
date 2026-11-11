@@ -175,6 +175,97 @@ test("environment information reads diagnosis without loading or changing decryp
   assert.deepEqual(methods, ["WorkspaceService.Diagnose"]);
   assert.deepEqual(page.state.diagnosis.value, environment);
 });
+
+test("Windows automatic detection displays both executable-derived parameters", async () => {
+  const checksum = "77e82c19700fb622f69d7dca998c37cf";
+  const player = { softwareName: checksum, appMd5: checksum };
+  mockMyGo(async (method) =>
+    method === "WorkspaceService.Diagnose"
+      ? { ...environment, player, knownPlayers: { [checksum]: checksum } }
+      : { mode: "auto", softwareName: "", appMd5: "" },
+  );
+  const page = mount(usePlayerSettings);
+  const store = useTraceStore();
+  cleanups.push(() => store.dispose());
+  await tick();
+  assert.equal(page.state.draft.mode, "auto");
+  assert.deepEqual(page.state.displayPlayer.value, player);
+  assert.equal(page.state.testError.value, "");
+  assert.equal(page.state.dirty.value, false);
+});
+
+test("Windows automatic fetch fills manual fields and saves the same parameters", async () => {
+  const checksum = "77e82c19700fb622f69d7dca998c37cf";
+  const player = { softwareName: checksum, appMd5: checksum };
+  const writes: PlayerSettings[] = [];
+  mockMyGo(async (method, ...args) => {
+    if (method === "WorkspaceService.Diagnose")
+      return { ...environment, player };
+    if (method === "WorkspaceService.SaveSettings") {
+      const settings = { ...(args[0] as PlayerSettings) };
+      writes.push(settings);
+      return settings;
+    }
+    return {
+      mode: "manual",
+      softwareName: "old-version",
+      appMd5: "a".repeat(32),
+    };
+  });
+  const page = mount(usePlayerSettings);
+  const store = useTraceStore();
+  cleanups.push(() => store.dispose());
+  await tick();
+  await page.state.testEnvironment(true);
+  assert.deepEqual(page.state.displayPlayer.value, {
+    mode: "manual",
+    ...player,
+  });
+  assert.equal(page.state.dirty.value, true);
+  assert.equal(await page.state.save(), true);
+  assert.deepEqual(writes, [{ mode: "manual", ...player }]);
+  assert.equal(page.state.dirty.value, false);
+});
+
+test("an older Windows family-labelled record can use the detected executable checksum", async () => {
+  const hash = "a".repeat(32);
+  mockMyGo(async (method) =>
+    method === "WorkspaceService.Diagnose"
+      ? { ...environment, player: { softwareName: hash, appMd5: hash } }
+      : { mode: "auto", softwareName: "", appMd5: "" },
+  );
+  const page = mount(usePlayerSettings);
+  const store = useTraceStore();
+  cleanups.push(() => store.dispose());
+  await tick();
+  store.keyHistory = [
+    {
+      id: "windows-record",
+      name: "Windows",
+      source: "upload",
+      createdAt: environment.checkedAt,
+      updatedAt: environment.checkedAt,
+      valid: true,
+      issues: [],
+      keyJson: {
+        passwords: {},
+        getPwdData: {
+          密码: "",
+          uit: "",
+          den: 0,
+          pmn: 0,
+          whenLong: 0,
+          pattern: "4",
+          mimatuokeqian: "fixture-direct-key",
+          softwareName: "ShenZaoLocalPlayer42",
+        },
+      },
+    },
+  ];
+  page.state.useRecord("windows-record");
+  assert.equal(page.state.draft.softwareName, "ShenZaoLocalPlayer42");
+  assert.equal(page.state.draft.appMd5, hash);
+});
 test("environment refresh deduplicates pending requests and discards results after leaving", async () => {
   const pending = deferred<Diagnosis>();
   let requests = 0;

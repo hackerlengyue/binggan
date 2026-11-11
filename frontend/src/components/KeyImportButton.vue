@@ -5,7 +5,7 @@ import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { t } from "@/i18n";
-import { keyFileError } from "@/lib/key-import";
+import { keyFileError, prepareImportedKeys } from "@/lib/key-import";
 import { useTraceStore } from "@/stores/trace";
 import type { KeyHistoryEntry } from "@/types/trace";
 
@@ -49,9 +49,15 @@ async function upload(event: Event) {
       })),
     );
     if (disposed) return;
-    const entries = await store.importKeyFiles(contents);
+    const prepared = await prepareImportedKeys(contents);
+    if (disposed) return;
+    const entries = await store.importKeyFiles(prepared.files);
     if (disposed) return;
     toast.success(t("已导入 {count} 份密钥", { count: entries.length }));
+    if (prepared.adjusted)
+      toast.info(
+        t("已自动匹配 {count} 份密钥的解密参数", { count: prepared.adjusted }),
+      );
     emit("imported", entries);
   } catch (cause) {
     if (!disposed) error.value = t((cause as Error).message);

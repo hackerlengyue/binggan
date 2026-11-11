@@ -392,6 +392,52 @@ test("stalled playback is not mistaken for completion or allowed to wait indefin
   assert.ok(h.events.includes("save:第一讲（中断）"));
 });
 
+test("a stationary media clock with a jittering slider triggers the stall guard within 120 seconds", async () => {
+  const h = harness();
+  let reads = 0;
+  h.deps.playbackSnapshot = async () => {
+    h.advance(10_000);
+    return frame(
+      String(99.08349609375 + (++reads % 2 ? 0 : 0.001)),
+      "02:29:41/02:31:04",
+      { at: String(reads), windowMode: "windowed" },
+    );
+  };
+  await assert.rejects(h.run({ maxPlaybackMinutes: 10 }), /连续 120 秒/);
+  assert.ok(reads <= 14, `stalled clock was masked by ${reads} slider samples`);
+  assert.ok(h.events.includes("save:第一讲（中断）"));
+});
+
+test("recovery rebases forward-progress confirmation when the current position is below an earlier maximum", async () => {
+  const h = harness();
+  let reads = 0;
+  let recovered = false;
+  let seconds = 50;
+  let recoveries = 0;
+  h.deps.playbackSnapshot = async () => {
+    h.advance(10_000);
+    const position = recovered
+      ? (seconds = Math.min(200, seconds + 1))
+      : ++reads === 1
+        ? 40
+        : reads === 2
+          ? 100
+          : 50;
+    return frame(String(position / 2), `${secondsClock(position)}/00:03:20`);
+  };
+  h.deps.recoverPlayback = async () => {
+    if (++recoveries > 1)
+      throw new Error(
+        "healthy resumed playback was compared to a stale maximum",
+      );
+    recovered = true;
+  };
+  await h.run({ maxPlaybackMinutes: 1 });
+  assert.equal(recoveries, 1);
+  assert.ok(h.events.includes("log:播放恢复已确认"));
+  assert.ok(h.events.includes("save:第一讲"));
+});
+
 test("cancellation while the terminal read is in flight cannot save as completed", async () => {
   const h = harness();
   let reads = 0;

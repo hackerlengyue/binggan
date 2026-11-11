@@ -66,23 +66,45 @@ export function captureResultDetail(entry: {
   return facts.join("\n");
 }
 
-// Progress samples are less valuable than action results and errors. Keep the
-// same storage bound, but discard old samples before discarding lifecycle events.
+// Prefer lifecycle events while retaining a bounded recent progress trail.
+// Otherwise a long queue can erase every sample needed to explain a timeout.
 export function retainExecutionLogs<T extends { kind?: string }>(
   entries: T[],
   limit: number,
 ): T[] {
   const excess = Math.max(0, entries.length - limit);
   if (!excess) return entries;
+  const progressBudget = Math.min(32, Math.floor(limit / 4));
+  const protectedProgress = new Set<number>();
+  for (
+    let i = entries.length - 1;
+    i >= 0 && protectedProgress.size < progressBudget;
+    i--
+  )
+    if (entries[i]!.kind === "progress") protectedProgress.add(i);
   let removed = 0;
-  const kept = entries.filter((entry) => {
-    if (entry.kind === "progress" && removed < excess) {
-      removed++;
-      return false;
-    }
-    return true;
-  });
-  return kept.slice(-limit);
+  const kept = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry, index }) => {
+      if (
+        entry.kind === "progress" &&
+        !protectedProgress.has(index) &&
+        removed < excess
+      ) {
+        removed++;
+        return false;
+      }
+      return true;
+    });
+  return kept
+    .filter(({ index }) => {
+      if (removed < excess && !protectedProgress.has(index)) {
+        removed++;
+        return false;
+      }
+      return true;
+    })
+    .map(({ entry }) => entry);
 }
 
 export function formatLogTime(at: string) {

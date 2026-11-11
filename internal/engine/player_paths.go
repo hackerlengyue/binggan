@@ -9,8 +9,8 @@ import (
 )
 
 // Installation describes a located player, separately from verified decryption
-// parameters. Windows PE file versions and executable digests are not themselves
-// proof of the softwareName/appMd5 sent by the player.
+// parameters. Windows parameters use the actual executable bytes, independently
+// of the PE version string or directory name.
 type Installation struct {
 	Path    string `json:"path"`
 	Version string `json:"version,omitempty"`

@@ -437,7 +437,12 @@ function applyFromRawText(
   applyPwdData(
     {
       softwareName: parseStringFromText(raw, ["softwareName", "software_name"]),
-      appMd5: parseStringFromText(raw, ["appMd5", "app_md5"]),
+      appMd5: parseStringFromText(raw, [
+        "appMd5",
+        "app_md5",
+        "softMd5",
+        "soft_md5",
+      ]),
     },
     acc,
   );
@@ -524,13 +529,30 @@ function applyFromRawText(
   if (!options.parametersOnly) assignCandidates(acc, candidates, fallbackIndex);
 }
 
+export function capturedAppMd5(
+  record: Record<string, unknown>,
+): string | undefined {
+  for (const name of [
+    "appMd5",
+    "appmd5",
+    "app_md5",
+    "softMd5",
+    "softmd5",
+    "soft_md5",
+  ]) {
+    const value = record[name];
+    if (typeof value === "string" && /^[a-f0-9]{32}$/i.test(value.trim()))
+      return value.trim().toLowerCase();
+  }
+}
+
 function applyPwdData(
   record: Record<string, unknown>,
   acc: KeyAccumulator,
 ): void {
   const software =
     record.softwareName ?? record.softwarename ?? record.software_name;
-  const appMd5 = record.appMd5 ?? record.appmd5 ?? record.app_md5;
+  const appMd5 = capturedAppMd5(record);
   if (typeof software === "string" && software.trim()) {
     acc.softwareName = software.trim();
     acc.playerVersions.add(acc.softwareName);
@@ -931,6 +953,7 @@ export function buildKeyJson(traces: TraceEntry[]): KeyResult {
       {
         softwareName: headerValue(trace.request.headers, "softwarename"),
         appMd5: headerValue(trace.request.headers, "appmd5"),
+        softMd5: headerValue(trace.request.headers, "softmd5"),
       },
       acc,
     );

@@ -322,3 +322,41 @@ test("mixed player versions or checksums cannot export a combined key", () => {
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.includes("不同播放器参数")));
 });
+
+test("Windows plaintext softMd5 survives request bodies, query, headers and forms", () => {
+  const checksum = "a".repeat(32);
+  const json = trace(
+    "getPwd3V2",
+    { data: { pwd: first } },
+    {
+      softwareName: "ShenZaoLocalPlayer42",
+      softMd5: checksum.toUpperCase(),
+      dts: 60,
+    },
+  );
+  const form = trace("getPwd3V2", { data: { pwd: first } });
+  form.request.body = "softwareName=ShenZaoLocalPlayer42&softMd5=" + checksum;
+  const header = trace("getPwd3V2", { data: { pwd: first } });
+  header.request.headers = {
+    SoftwareName: "ShenZaoLocalPlayer42",
+    SoftMd5: checksum,
+  };
+  const query = trace(
+    "getPwd3V2?softwareName=ShenZaoLocalPlayer42&softMd5=" + checksum,
+    { data: { pwd: first } },
+  );
+  for (const row of [json, form, header, query]) {
+    const data = buildKeyJson([metadata, row]).keyJson.getPwdData;
+    assert.equal(data.softwareName, "ShenZaoLocalPlayer42");
+    assert.equal(data.appMd5, checksum);
+  }
+  const encrypted = trace(
+    "getPwd3V2",
+    { data: { pwd: first } },
+    { softMd5: "encrypted/base64==" },
+  );
+  assert.equal(
+    buildKeyJson([metadata, encrypted]).keyJson.getPwdData.appMd5,
+    undefined,
+  );
+});

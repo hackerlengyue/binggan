@@ -217,8 +217,10 @@
     background: var(--scrollbar-thumb-hover);
     background-clip: padding-box;
   }
-  .window-toolbar {
+  .desktop-workspace .window-toolbar {
     background: var(--sidebar);
+    /* Native insets already account for platform, zoom and full screen. */
+    padding-right: calc(1rem + var(--mygo-titlebar-inset-right, 0px));
   }
   /* Content sits on a faint canvas so white panels read as surfaces, as in native split views. */
   .workspace-content {
@@ -324,7 +326,7 @@
       transition: none;
     }
   }
-  html[data-desktop-platform="darwin"] [data-window-drag] {
+  html[data-desktop-platform] [data-window-drag] {
     user-select: none;
     --app-region: drag;
   }

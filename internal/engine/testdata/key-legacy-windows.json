@@ -1,0 +1,18 @@
+{
+  "passwords": {
+    "1": "11111111111111111111111111111111"
+  },
+  "getPwdData": {
+    "密码": "dqKV0knSgkrzYPMJBYCI6r7cvNBhXvSMDjYd/z7dYmC+3LzQYV70jA42Hf8+3WJgvty80GFe9IwONh3/Pt1iYO1tfv9BrbWlYdnfsmCpxmc=",
+    "uit": "synthetic-legacy-capture",
+    "md51": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "md52": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "md53": "cccccccccccccccccccccccccccccccc",
+    "den": 10000000,
+    "whenLong": 10000000,
+    "pmn": 100,
+    "pattern": "3",
+    "audio": 0,
+    "softwareName": "ShenZaoLocalPlayer41"
+  }
+}

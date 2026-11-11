@@ -47,6 +47,27 @@ test("older exported files can omit whenLong without losing other parameters", (
   assert.deepEqual(entry.keyJson, payload);
 });
 
+test("Windows imports preserve protocol labels and normalize plaintext softMd5", () => {
+  const { appMd5, ...data } = payload.getPwdData;
+  const entry = makeImportedKey({
+    name: "Windows.json",
+    raw: JSON.stringify({
+      ...payload,
+      getPwdData: {
+        ...data,
+        softwareName: "ShenZaoLocalPlayer42",
+        softMd5: "B".repeat(32),
+      },
+    }),
+  });
+  assert.equal(entry.keyJson.getPwdData.softwareName, "ShenZaoLocalPlayer42");
+  assert.equal(entry.keyJson.getPwdData.appMd5, "b".repeat(32));
+  const restored = readKeyHistory(
+    JSON.stringify({ version: 1, items: [entry] }),
+  )[0]!;
+  assert.equal(restored.keyJson.getPwdData.appMd5, "b".repeat(32));
+});
+
 test("malformed or incomplete keys never become usable history records", () => {
   const invalid = [
     "{",

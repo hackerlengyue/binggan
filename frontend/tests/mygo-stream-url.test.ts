@@ -12,7 +12,7 @@ test("file URLs stay relative in browser preview and use MyGo Protocol in the ap
     );
     Object.defineProperty(globalThis, "mygo", {
       configurable: true,
-      value: {},
+      value: { platform: "darwin" },
     });
     assert.equal(
       streamURL("/api/resources/a/stream?start=1"),
@@ -24,3 +24,34 @@ test("file URLs stay relative in browser preview and use MyGo Protocol in the ap
     else Reflect.deleteProperty(globalThis, "mygo");
   }
 });
+
+for (const platform of ["win32", "darwin", "linux"] as const) {
+  test(`file URLs use the ${platform} WebView transport for every media and export route`, () => {
+    const before = Object.getOwnPropertyDescriptor(globalThis, "mygo");
+    try {
+      Object.defineProperty(globalThis, "mygo", {
+        configurable: true,
+        value: { platform },
+      });
+      const origin =
+        platform === "win32"
+          ? "http://binggan-stream.localhost"
+          : "binggan-stream://localhost";
+      for (const path of [
+        "/api/resources/video/download",
+        "/api/resources/video/stream",
+        "/api/resources/video/thumbnail?v=2026-11-12",
+        "/api/decrypt/tasks/task/download",
+        "/api/decrypt/jobs/job/download",
+        "/api/decrypt/jobs/job/logs?download=1",
+        "/api/logs?source=engine&download=1",
+        "/api/export?format=jsonl",
+      ]) {
+        assert.equal(streamURL(path), origin + path, path);
+      }
+    } finally {
+      if (before) Object.defineProperty(globalThis, "mygo", before);
+      else Reflect.deleteProperty(globalThis, "mygo");
+    }
+  });
+}
